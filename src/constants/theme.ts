@@ -1,51 +1,50 @@
 // Beauty Track - Theme Constants
-// Elegant Purple & Blush Palette
+// Hybrid Lavender & Honey Gold Palette
+// Premium, warm, emotionally safe design
 
 export const COLORS = {
   // Primary palette
-  primary: "#7B6EF6", // Primary Purple
-  secondary: "#F6C1D1", // Blush Pink
-  accent: "#E7CBA9", // Champagne Gold (accent only)
-  softLavender: "#EDE9FF", // Soft Lavender
+  primary: "#7B6EF6", // Primary Lavender (brand, navigation, active states)
+  honeyGold: "#F2B705", // Honey Gold (CTA buttons, highlights, emotional moments)
+  softAmber: "#FFD27D", // Soft Amber (secondary accent)
+  lightPeach: "#FFEEE1", // Light Peach (warm surface, sections)
+  softLavender: "#EDE9FF", // Soft Lavender (background tint)
 
   // Text colors
-  darkText: "#3A2E5C", // Dark Plum
-  lightText: "#9A93B8", // Muted Gray (for secondary text)
-  mutedText: "#9A93B8", // Muted Gray (icons / inactive)
+  darkText: "#3A2E5C", // Dark Plum (primary text)
+  warmCocoa: "#7A5A3A", // Warm Cocoa (secondary text)
+  lightText: "#9A93B8", // Muted Gray (secondary text, for backward compatibility)
+  mutedText: "#9A93B8", // Muted Gray (icons, inactive)
 
   // Background colors
-  background: "#FBFAFF", // Warm White
-  backgroundGradientStart: "#EDE9FF", // Soft Lavender
-  backgroundGradientEnd: "#FBFAFF", // Warm White
+  background: "#FBFAFF", // Warm White (main background)
+  backgroundGradientStart: "#D4C8FF", // Brighter, less saturated purple
+  backgroundGradientEnd: "#FBFAFF", // Warm White (fades to less saturated)
   timelineBackground: "#EDE9FF",
-  cardBackground: "#FFFFFF", // White or very lightly tinted lavender
+  cardBackground: "#FFFFFF", // White or lightly tinted lavender/peach
   modalBackground: "rgba(58, 46, 92, 0.5)", // Dark Plum with opacity
-
-  // Gradient colors
-  gradientStart: "#7B6EF6", // Primary Purple
-  gradientEnd: "#F6C1D1", // Blush Pink
 
   // UI colors
   border: "#EDE9FF", // Soft Lavender for borders
   divider: "#EDE9FF", // Soft Lavender for dividers
   inputBackground: "#FBFAFF", // Warm White
 
-  // Status colors (keeping warm tones)
-  success: "#7CB992",
-  warning: "#E7CBA9", // Champagne Gold
-  error: "#F6C1D1", // Soft error using Blush Pink
-  info: "#7B6EF6", // Primary Purple
+  // Status colors (warm, approachable)
+  success: "#7CB992", // Soft green for success
+  warning: "#FFD27D", // Soft Amber for warnings
+  error: "#F6A5A5", // Soft warm red (not harsh)
+  info: "#7B6EF6", // Primary Lavender
 
-  // Category colors (updated to match new palette)
-  face: "#7B6EF6", // Primary Purple
-  skin: "#F6C1D1", // Blush Pink
-  body: "#EDE9FF", // Soft Lavender
-  hair: "#E7CBA9", // Champagne Gold
-  makeup: "#F6C1D1", // Blush Pink
+  // Category colors (using hybrid palette)
+  face: "#7B6EF6", // Primary Lavender
+  skin: "#FFD27D", // Soft Amber
+  body: "#B8A8F0", // Medium Lavender (more visible)
+  hair: "#F2B705", // Honey Gold
+  makeup: "#FFC896", // Warm Peach (more visible)
   brows: "#9A93B8", // Muted Gray
-  lashes: "#7B6EF6", // Primary Purple
-  nails: "#F6C1D1", // Blush Pink
-  tan: "#E7CBA9", // Champagne Gold
+  lashes: "#7B6EF6", // Primary Lavender
+  nails: "#FFD27D", // Soft Amber
+  tan: "#F2B705", // Honey Gold
 
   // Dark mode colors (for future use)
   dark: {
@@ -123,12 +122,15 @@ export const SHADOWS = {
 };
 
 export const GRADIENTS = {
-  // CTA buttons: linear-gradient(135deg, #7B6EF6 → #F6C1D1)
-  primary: [COLORS.primary, COLORS.secondary] as const, // Purple to Blush Pink
+  // Primary CTA: linear-gradient(135deg, #7B6EF6 → #F2B705)
+  primary: [COLORS.primary, COLORS.honeyGold] as const, // Lavender to Honey Gold
+  // Secondary CTA: linear-gradient(135deg, #FFD27D → #FFEEE1)
+  secondary: [COLORS.softAmber, COLORS.lightPeach] as const, // Soft Amber to Light Peach
   // Header backgrounds: radial-gradient from Soft Lavender to Warm White
   header: [COLORS.softLavender, COLORS.background] as const,
-  // Cards: very subtle vertical gradient (white → very light lavender)
+  // Cards: very subtle vertical gradient (white → very light lavender or peach tint)
   card: ["#FFFFFF", "rgba(237, 233, 255, 0.3)"] as const,
+  cardPeach: ["#FFFFFF", "rgba(255, 238, 225, 0.2)"] as const, // White to light peach
   // Background gradient
   background: [
     COLORS.backgroundGradientStart,

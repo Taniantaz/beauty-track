@@ -1,5 +1,6 @@
 // Components Index
 
+export { default as AnimatedScreen } from './AnimatedScreen';
 export { default as Button } from './Button';
 export { default as CategoryIcon } from './CategoryIcon';
 export { default as FloatingActionButton } from './FloatingActionButton';

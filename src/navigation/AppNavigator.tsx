@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { COLORS, SIZES, SHADOWS, GRADIENTS } from "../constants/theme";
 import { RootStackParamList, MainTabsParamList } from "../types";
+import { useSettingsStore } from "../store/useSettingsStore";
 
 // Screens
 import OnboardingScreen from "../screens/OnboardingScreen";
@@ -118,13 +119,14 @@ const MainTabsNavigator: React.FC = () => {
 
 // Main App Navigator
 const AppNavigator: React.FC = () => {
-  // Set to true to skip onboarding for development
-  const skipOnboarding = true;
+  const hasSeenOnboarding = useSettingsStore(
+    (state) => state.hasSeenOnboarding
+  );
 
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName={skipOnboarding ? "MainTabs" : "Onboarding"}
+        initialRouteName={hasSeenOnboarding ? "MainTabs" : "Onboarding"}
         screenOptions={{
           headerShown: false,
           animation: "slide_from_right",

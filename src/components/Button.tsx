@@ -87,7 +87,7 @@ const Button: React.FC<ButtonProps> = ({
       case 'primary':
         return '#FFFFFF'; // White text on gradient
       case 'secondary':
-        return COLORS.darkText;
+        return COLORS.warmCocoa; // Warm cocoa text on warm gradient
       case 'outline':
         return COLORS.primary;
       case 'ghost':
@@ -165,6 +165,28 @@ const Button: React.FC<ButtonProps> = ({
     );
   }
 
+  if (variant === 'secondary') {
+    return (
+      <TouchableOpacity
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        disabled={disabled || loading}
+        activeOpacity={1}
+        style={[fullWidth && styles.fullWidth, style]}
+      >
+        <LinearGradient
+          colors={disabled ? [COLORS.mutedText, COLORS.mutedText] : GRADIENTS.secondary}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.gradient, fullWidth && styles.fullWidth]}
+        >
+          {renderContent()}
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -174,7 +196,6 @@ const Button: React.FC<ButtonProps> = ({
       activeOpacity={0.7}
       style={[
         styles.button,
-        variant === 'secondary' && styles.secondary,
         variant === 'outline' && styles.outline,
         variant === 'ghost' && styles.ghost,
         disabled && styles.disabled,
@@ -209,9 +230,6 @@ const styles = StyleSheet.create({
   },
   iconRight: {
     marginLeft: 8,
-  },
-  secondary: {
-    backgroundColor: COLORS.softLavender,
   },
   outline: {
     backgroundColor: 'transparent',

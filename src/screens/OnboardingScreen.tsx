@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SIZES, SHADOWS, GRADIENTS } from '../constants/theme';
 import { ONBOARDING_SLIDES } from '../data/mockData';
+import { useSettingsStore } from '../store/useSettingsStore';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -75,6 +76,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
+  const setHasSeenOnboarding = useSettingsStore((state) => state.setHasSeenOnboarding);
 
   const handleNext = () => {
     if (currentIndex < ONBOARDING_SLIDES.length - 1) {
@@ -88,10 +90,12 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
   };
 
   const handleComplete = () => {
+    setHasSeenOnboarding(true);
     navigation.replace('MainTabs');
   };
 
   const handleSkip = () => {
+    setHasSeenOnboarding(true);
     navigation.replace('MainTabs');
   };
 

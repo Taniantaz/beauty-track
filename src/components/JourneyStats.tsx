@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statBox: {
-    backgroundColor: COLORS.softLavender,
+    backgroundColor: COLORS.lightPeach,
     borderRadius: SIZES.radiusMd,
     padding: SIZES.md,
     alignItems: "center",

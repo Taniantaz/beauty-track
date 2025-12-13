@@ -18,6 +18,7 @@ import { COLORS, SIZES, SHADOWS, GRADIENTS } from "../constants/theme";
 import ProcedureCard from "../components/ProcedureCard";
 import TimelineIndicator from "../components/TimelineIndicator";
 import JourneyStats from "../components/JourneyStats";
+import AnimatedScreen from "../components/AnimatedScreen";
 import { Procedure } from "../types";
 import { useProcedureStore } from "../store/useProcedureStore";
 import { useUserStore } from "../store/useUserStore";
@@ -52,125 +53,130 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   });
 
   return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={GRADIENTS.background}
-        style={StyleSheet.absoluteFill}
-      />
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor={COLORS.background}
-        translucent={false}
-      />
-
-      {/* Header */}
-      <Animated.View
-        style={[
-          styles.header,
-          { paddingTop: insets.top + SIZES.md, opacity: headerOpacity },
-        ]}
-      >
-        <LinearGradient colors={GRADIENTS.header} style={styles.headerGradient}>
-          <View style={styles.headerContent}>
-            <View>
-              <Text style={styles.welcomeText}>Welcome back,</Text>
-              <View style={styles.nameRow}>
-                <Text style={styles.nameText}>{user.name.split(" ")[0]}</Text>
-                <Text style={styles.sparkle}> ✨</Text>
-              </View>
-            </View>
-
-            <View style={styles.headerActions}>
-              <TouchableOpacity style={styles.iconButton} onPress={() => {}}>
-                <Ionicons
-                  name="search-outline"
-                  size={24}
-                  color={COLORS.darkText}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.iconButton} onPress={() => {}}>
-                <Ionicons
-                  name="notifications-outline"
-                  size={24}
-                  color={COLORS.darkText}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </LinearGradient>
-      </Animated.View>
-
-      {/* Content */}
-      <Animated.ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: insets.bottom + 100 },
-        ]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={COLORS.primary}
-            colors={[COLORS.primary]}
-          />
-        }
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
-        scrollEventThrottle={16}
-      >
-        {/* Journey Stats */}
-        <JourneyStats
-          procedureCount={procedures.length}
-          photoCount={photoCount}
-          reminderCount={reminderCount}
+    <AnimatedScreen direction="right">
+      <View style={styles.container}>
+        <LinearGradient
+          colors={GRADIENTS.background}
+          style={StyleSheet.absoluteFill}
+        />
+        <StatusBar
+          barStyle="dark-content"
+          backgroundColor={COLORS.background}
+          translucent={false}
         />
 
-        {/* Timeline Section */}
-        <View style={styles.timelineSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Your Timeline</Text>
-            <Text style={styles.procedureCount}>
-              {procedures.length} procedures
-            </Text>
-          </View>
-
-          {/* Timeline List */}
-          <View style={styles.timeline}>
-            {procedures.map((procedure, index) => (
-              <View key={procedure.id}>
-                <ProcedureCard
-                  procedure={procedure}
-                  onPress={() => handleProcedurePress(procedure)}
-                  index={index}
-                />
-                {/* Show timeline indicator between cards, not after the last one */}
-                {index < procedures.length - 1 && <TimelineIndicator />}
+        {/* Header */}
+        <Animated.View
+          style={[
+            styles.header,
+            { paddingTop: insets.top + SIZES.md, opacity: headerOpacity },
+          ]}
+        >
+          <LinearGradient
+            colors={GRADIENTS.header}
+            style={styles.headerGradient}
+          >
+            <View style={styles.headerContent}>
+              <View>
+                <Text style={styles.welcomeText}>Welcome back,</Text>
+                <View style={styles.nameRow}>
+                  <Text style={styles.nameText}>{user.name.split(" ")[0]}</Text>
+                  <Text style={styles.sparkle}> ✨</Text>
+                </View>
               </View>
-            ))}
-          </View>
 
-          {procedures.length === 0 && (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIconContainer}>
-                <Ionicons
-                  name="flower-outline"
-                  size={48}
-                  color={COLORS.primary}
-                />
+              <View style={styles.headerActions}>
+                <TouchableOpacity style={styles.iconButton} onPress={() => {}}>
+                  <Ionicons
+                    name="search-outline"
+                    size={24}
+                    color={COLORS.darkText}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.iconButton} onPress={() => {}}>
+                  <Ionicons
+                    name="notifications-outline"
+                    size={24}
+                    color={COLORS.darkText}
+                  />
+                </TouchableOpacity>
               </View>
-              <Text style={styles.emptyTitle}>Start Your Journey</Text>
-              <Text style={styles.emptyText}>
-                Tap the + button to log your first{"\n"}cosmetic procedure
+            </View>
+          </LinearGradient>
+        </Animated.View>
+
+        {/* Content */}
+        <Animated.ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: insets.bottom + 100 },
+          ]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={COLORS.primary}
+              colors={[COLORS.primary]}
+            />
+          }
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: true }
+          )}
+          scrollEventThrottle={16}
+        >
+          {/* Journey Stats */}
+          <JourneyStats
+            procedureCount={procedures.length}
+            photoCount={photoCount}
+            reminderCount={reminderCount}
+          />
+
+          {/* Timeline Section */}
+          <View style={styles.timelineSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Your Timeline</Text>
+              <Text style={styles.procedureCount}>
+                {procedures.length} procedures
               </Text>
             </View>
-          )}
-        </View>
-      </Animated.ScrollView>
-    </View>
+
+            {/* Timeline List */}
+            <View style={styles.timeline}>
+              {procedures.map((procedure, index) => (
+                <View key={procedure.id}>
+                  <ProcedureCard
+                    procedure={procedure}
+                    onPress={() => handleProcedurePress(procedure)}
+                    index={index}
+                  />
+                  {/* Show timeline indicator between cards, not after the last one */}
+                  {index < procedures.length - 1 && <TimelineIndicator />}
+                </View>
+              ))}
+            </View>
+
+            {procedures.length === 0 && (
+              <View style={styles.emptyState}>
+                <View style={styles.emptyIconContainer}>
+                  <Ionicons
+                    name="flower-outline"
+                    size={48}
+                    color={COLORS.primary}
+                  />
+                </View>
+                <Text style={styles.emptyTitle}>Start Your Journey</Text>
+                <Text style={styles.emptyText}>
+                  Tap the + button to log your first{"\n"}cosmetic procedure
+                </Text>
+              </View>
+            )}
+          </View>
+        </Animated.ScrollView>
+      </View>
+    </AnimatedScreen>
   );
 };
 

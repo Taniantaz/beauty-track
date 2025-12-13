@@ -1,0 +1,791 @@
+// Add Procedure Screen
+
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  StatusBar,
+  Modal,
+  Image,
+  Platform,
+  Alert,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as ImagePicker from "expo-image-picker";
+import { COLORS, SIZES, SHADOWS, GRADIENTS } from "../constants/theme";
+import { CATEGORIES, PROCEDURE_SUGGESTIONS } from "../data/mockData";
+import { Category, Photo, PhotoTag, ReminderInterval } from "../types";
+import Button from "../components/Button";
+import { useProcedureStore } from "../store/useProcedureStore";
+
+interface AddProcedureScreenProps {
+  navigation: any;
+  route: any;
+}
+
+const REMINDER_OPTIONS = [
+  { id: "30days", label: "30 Days" },
+  { id: "90days", label: "90 Days" },
+  { id: "6months", label: "6 Months" },
+  { id: "1year", label: "1 Year" },
+  { id: "custom", label: "Custom" },
+];
+
+const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
+  navigation,
+  route,
+}) => {
+  const insets = useSafeAreaInsets();
+  const isEditing = route?.params?.procedureId;
+  const { addProcedure, updateProcedure, getProcedureById } =
+    useProcedureStore();
+
+  const [procedureName, setProcedureName] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<Category>("face");
+  const [date, setDate] = useState(new Date());
+  const [clinic, setClinic] = useState("");
+  const [cost, setCost] = useState("");
+  const [notes, setNotes] = useState("");
+  const [productBrand, setProductBrand] = useState("");
+  const [beforePhotos, setBeforePhotos] = useState<string[]>([]);
+  const [afterPhotos, setAfterPhotos] = useState<string[]>([]);
+  const [reminderEnabled, setReminderEnabled] = useState(true);
+  const [reminderInterval, setReminderInterval] = useState("90days");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Load procedure data if editing
+  useEffect(() => {
+    if (isEditing) {
+      const procedure = getProcedureById(isEditing);
+      if (procedure) {
+        setProcedureName(procedure.name);
+        setSelectedCategory(procedure.category);
+        setDate(procedure.date);
+        setClinic(procedure.clinic || "");
+        setCost(procedure.cost?.toString() || "");
+        setNotes(procedure.notes || "");
+        setProductBrand(procedure.productBrand || "");
+        setBeforePhotos(
+          procedure.photos.filter((p) => p.tag === "before").map((p) => p.uri)
+        );
+        setAfterPhotos(
+          procedure.photos.filter((p) => p.tag === "after").map((p) => p.uri)
+        );
+        setReminderEnabled(procedure.reminder?.enabled ?? true);
+        setReminderInterval(procedure.reminder?.interval || "90days");
+      }
+    }
+  }, [isEditing, getProcedureById]);
+
+  const filteredSuggestions = PROCEDURE_SUGGESTIONS.filter((s) =>
+    s.toLowerCase().includes(procedureName.toLowerCase())
+  ).slice(0, 5);
+
+  const pickImage = async (type: PhotoTag) => {
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (permissionResult.granted === false) {
+      Alert.alert(
+        "Permission Required",
+        "Please allow access to your photo library."
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      if (type === "before") {
+        setBeforePhotos([...beforePhotos, result.assets[0].uri]);
+      } else {
+        setAfterPhotos([...afterPhotos, result.assets[0].uri]);
+      }
+    }
+  };
+
+  const removePhoto = (type: PhotoTag, index: number) => {
+    if (type === "before") {
+      setBeforePhotos(beforePhotos.filter((_, i) => i !== index));
+    } else {
+      setAfterPhotos(afterPhotos.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleSave = () => {
+    if (!procedureName.trim()) {
+      Alert.alert("Required", "Please enter a procedure name.");
+      return;
+    }
+
+    // Combine photos
+    const photos: Photo[] = [
+      ...beforePhotos.map((uri, index) => ({
+        id: `photo_before_${Date.now()}_${index}`,
+        uri,
+        tag: "before" as PhotoTag,
+        timestamp: date,
+      })),
+      ...afterPhotos.map((uri, index) => ({
+        id: `photo_after_${Date.now()}_${index}`,
+        uri,
+        tag: "after" as PhotoTag,
+        timestamp: date,
+      })),
+    ];
+
+    // Calculate next reminder date
+    let nextReminderDate: Date | undefined;
+    if (reminderEnabled) {
+      const now = new Date();
+      switch (reminderInterval) {
+        case "30days":
+          nextReminderDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+          break;
+        case "90days":
+          nextReminderDate = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+          break;
+        case "6months":
+          nextReminderDate = new Date(
+            now.getTime() + 180 * 24 * 60 * 60 * 1000
+          );
+          break;
+        case "1year":
+          nextReminderDate = new Date(
+            now.getTime() + 365 * 24 * 60 * 60 * 1000
+          );
+          break;
+        default:
+          nextReminderDate = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+      }
+    }
+
+    const procedureData = {
+      name: procedureName.trim(),
+      category: selectedCategory,
+      date,
+      clinic: clinic.trim() || undefined,
+      cost: cost ? parseFloat(cost) : undefined,
+      notes: notes.trim() || undefined,
+      productBrand: productBrand.trim() || undefined,
+      photos,
+      reminder:
+        reminderEnabled && nextReminderDate
+          ? {
+              id: `reminder_${Date.now()}`,
+              procedureId: isEditing || "",
+              interval: reminderInterval as ReminderInterval,
+              nextDate: nextReminderDate,
+              enabled: true,
+            }
+          : undefined,
+    };
+
+    if (isEditing) {
+      updateProcedure(isEditing, procedureData);
+    } else {
+      addProcedure(procedureData);
+    }
+
+    navigation.goBack();
+  };
+
+  const formatDateDisplay = (d: Date) => {
+    return d.toLocaleDateString("en-US", {
+      month: "2-digit",
+      day: "2-digit",
+      year: "numeric",
+    });
+  };
+
+  return (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={GRADIENTS.background}
+        style={StyleSheet.absoluteFill}
+      />
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor={COLORS.background}
+        translucent={false}
+      />
+
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + SIZES.md }]}>
+        <Text style={styles.headerTitle}>
+          {isEditing ? "Edit Procedure" : "Add Procedure"}
+        </Text>
+        <TouchableOpacity
+          style={styles.closeButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="close" size={24} color={COLORS.darkText} />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 100 },
+        ]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Procedure Name */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Procedure Name *</Text>
+          <View style={styles.inputContainer}>
+            <Ionicons
+              name="pricetag-outline"
+              size={20}
+              color={COLORS.mutedText}
+              style={styles.inputIcon}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="e.g., Lip Filler, Botox"
+              placeholderTextColor={COLORS.mutedText}
+              value={procedureName}
+              onChangeText={(text) => {
+                setProcedureName(text);
+                setShowSuggestions(text.length > 0);
+              }}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+            />
+          </View>
+
+          {/* Suggestions */}
+          {showSuggestions && filteredSuggestions.length > 0 && (
+            <View style={styles.suggestionsContainer}>
+              {filteredSuggestions.map((suggestion, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.suggestionItem}
+                  onPress={() => {
+                    setProcedureName(suggestion);
+                    setShowSuggestions(false);
+                  }}
+                >
+                  <Text style={styles.suggestionText}>{suggestion}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Category */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Category</Text>
+          <View style={styles.categoryGrid}>
+            {CATEGORIES.map((category) => (
+              <TouchableOpacity
+                key={category.id}
+                style={[
+                  styles.categoryItem,
+                  selectedCategory === category.id &&
+                    styles.categoryItemSelected,
+                ]}
+                onPress={() => setSelectedCategory(category.id)}
+              >
+                <View
+                  style={[
+                    styles.categoryIcon,
+                    { backgroundColor: `${category.color}20` },
+                  ]}
+                >
+                  <Ionicons
+                    name={category.icon as any}
+                    size={24}
+                    color={category.color}
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.categoryText,
+                    selectedCategory === category.id &&
+                      styles.categoryTextSelected,
+                  ]}
+                >
+                  {category.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Date */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Date</Text>
+          <TouchableOpacity style={styles.inputContainer}>
+            <Ionicons
+              name="calendar-outline"
+              size={20}
+              color={COLORS.mutedText}
+              style={styles.inputIcon}
+            />
+            <Text style={styles.dateText}>{formatDateDisplay(date)}</Text>
+            <Ionicons name="chevron-down" size={20} color={COLORS.mutedText} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Photos */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Photos</Text>
+          <View style={styles.photosRow}>
+            {/* Before Photos */}
+            <View style={styles.photoColumn}>
+              <Text style={styles.photoLabel}>Before</Text>
+              <TouchableOpacity
+                style={styles.photoUpload}
+                onPress={() => pickImage("before")}
+              >
+                {beforePhotos.length > 0 ? (
+                  <Image
+                    source={{ uri: beforePhotos[0] }}
+                    style={styles.photoPreview}
+                  />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="camera-outline"
+                      size={32}
+                      color={COLORS.mutedText}
+                    />
+                    <Text style={styles.photoUploadText}>Add Photo</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* After Photos */}
+            <View style={styles.photoColumn}>
+              <Text style={styles.photoLabel}>After</Text>
+              <TouchableOpacity
+                style={styles.photoUpload}
+                onPress={() => pickImage("after")}
+              >
+                {afterPhotos.length > 0 ? (
+                  <Image
+                    source={{ uri: afterPhotos[0] }}
+                    style={styles.photoPreview}
+                  />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="camera-outline"
+                      size={32}
+                      color={COLORS.mutedText}
+                    />
+                    <Text style={styles.photoUploadText}>Add Photo</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        {/* Optional Fields */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Clinic / Provider (optional)</Text>
+          <View style={styles.inputContainer}>
+            <Ionicons
+              name="business-outline"
+              size={20}
+              color={COLORS.mutedText}
+              style={styles.inputIcon}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="e.g., Glow Aesthetics"
+              placeholderTextColor={COLORS.mutedText}
+              value={clinic}
+              onChangeText={setClinic}
+            />
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Product / Brand (optional)</Text>
+          <View style={styles.inputContainer}>
+            <Ionicons
+              name="flask-outline"
+              size={20}
+              color={COLORS.mutedText}
+              style={styles.inputIcon}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="e.g., Juvederm, Botox"
+              placeholderTextColor={COLORS.mutedText}
+              value={productBrand}
+              onChangeText={setProductBrand}
+            />
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Cost (optional)</Text>
+          <View style={styles.inputContainer}>
+            <Text style={styles.currencySymbol}>$</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="0.00"
+              placeholderTextColor={COLORS.mutedText}
+              value={cost}
+              onChangeText={setCost}
+              keyboardType="decimal-pad"
+            />
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Notes (optional)</Text>
+          <View style={[styles.inputContainer, styles.textAreaContainer]}>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Any notes about the procedure..."
+              placeholderTextColor={COLORS.mutedText}
+              value={notes}
+              onChangeText={setNotes}
+              multiline={true}
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
+          </View>
+        </View>
+
+        {/* Reminder */}
+        <View style={styles.section}>
+          <View style={styles.reminderHeader}>
+            <View>
+              <Text style={styles.label}>Maintenance Reminder</Text>
+              <Text style={styles.reminderSubtext}>
+                Get notified for your next touch-up
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.reminderToggle,
+                reminderEnabled && styles.reminderToggleActive,
+              ]}
+              onPress={() => setReminderEnabled(!reminderEnabled)}
+            >
+              <View
+                style={[
+                  styles.reminderToggleThumb,
+                  reminderEnabled && styles.reminderToggleThumbActive,
+                ]}
+              />
+            </TouchableOpacity>
+          </View>
+
+          {reminderEnabled && (
+            <View style={styles.reminderOptions}>
+              {REMINDER_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.id}
+                  style={[
+                    styles.reminderOption,
+                    reminderInterval === option.id &&
+                      styles.reminderOptionSelected,
+                  ]}
+                  onPress={() => setReminderInterval(option.id)}
+                >
+                  <Text
+                    style={[
+                      styles.reminderOptionText,
+                      reminderInterval === option.id &&
+                        styles.reminderOptionTextSelected,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      {/* Save Button */}
+      <View
+        style={[styles.footer, { paddingBottom: insets.bottom + SIZES.md }]}
+      >
+        <TouchableOpacity
+          style={styles.saveButton}
+          onPress={handleSave}
+          activeOpacity={0.9}
+        >
+          <LinearGradient
+            colors={GRADIENTS.primary}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.saveButtonGradient}
+          >
+            <Ionicons name="add" size={24} color="#FFFFFF" />
+            <Text style={styles.saveButtonText}>
+              {isEditing ? "Save Changes" : "Add Procedure"}
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: SIZES.lg,
+    paddingBottom: SIZES.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  headerTitle: {
+    fontSize: SIZES.fontLg,
+    fontWeight: "700",
+    color: COLORS.darkText,
+  },
+  closeButton: {
+    position: "absolute",
+    right: SIZES.lg,
+    top: "50%",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.inputBackground,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: SIZES.lg,
+  },
+  section: {
+    marginBottom: SIZES.lg,
+  },
+  label: {
+    fontSize: SIZES.fontMd,
+    fontWeight: "600",
+    color: COLORS.darkText,
+    marginBottom: SIZES.sm,
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.cardBackground,
+    borderRadius: SIZES.radiusMd,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: SIZES.md,
+    height: 52,
+  },
+  inputIcon: {
+    marginRight: SIZES.sm,
+  },
+  input: {
+    flex: 1,
+    fontSize: SIZES.fontMd,
+    color: COLORS.darkText,
+  },
+  currencySymbol: {
+    fontSize: SIZES.fontMd,
+    color: COLORS.mutedText,
+    marginRight: SIZES.xs,
+  },
+  textAreaContainer: {
+    height: 120,
+    alignItems: "flex-start",
+    paddingVertical: SIZES.md,
+  },
+  textArea: {
+    height: "100%",
+  },
+  dateText: {
+    flex: 1,
+    fontSize: SIZES.fontMd,
+    color: COLORS.darkText,
+  },
+  suggestionsContainer: {
+    backgroundColor: COLORS.cardBackground,
+    borderRadius: SIZES.radiusMd,
+    marginTop: SIZES.xs,
+    ...SHADOWS.medium,
+  },
+  suggestionItem: {
+    padding: SIZES.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  suggestionText: {
+    fontSize: SIZES.fontMd,
+    color: COLORS.darkText,
+  },
+  categoryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: SIZES.sm,
+  },
+  categoryItem: {
+    width: "31%",
+    aspectRatio: 1,
+    backgroundColor: COLORS.cardBackground,
+    borderRadius: SIZES.radiusMd,
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: SIZES.sm,
+  },
+  categoryItemSelected: {
+    borderColor: COLORS.primary,
+  },
+  categoryIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: SIZES.xs,
+  },
+  categoryText: {
+    fontSize: SIZES.fontSm,
+    color: COLORS.lightText,
+    textAlign: "center",
+  },
+  categoryTextSelected: {
+    color: COLORS.darkText,
+    fontWeight: "600",
+  },
+  photosRow: {
+    flexDirection: "row",
+    gap: SIZES.md,
+  },
+  photoColumn: {
+    flex: 1,
+  },
+  photoLabel: {
+    fontSize: SIZES.fontSm,
+    color: COLORS.primary,
+    marginBottom: SIZES.sm,
+  },
+  photoUpload: {
+    aspectRatio: 0.85,
+    backgroundColor: COLORS.cardBackground,
+    borderRadius: SIZES.radiusMd,
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    borderStyle: "dashed",
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  photoUploadText: {
+    fontSize: SIZES.fontSm,
+    color: COLORS.mutedText,
+    marginTop: SIZES.sm,
+  },
+  photoPreview: {
+    width: "100%",
+    height: "100%",
+  },
+  reminderHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  reminderSubtext: {
+    fontSize: SIZES.fontSm,
+    color: COLORS.lightText,
+    marginTop: 2,
+  },
+  reminderToggle: {
+    width: 52,
+    height: 32,
+    backgroundColor: COLORS.border,
+    borderRadius: 16,
+    padding: 3,
+  },
+  reminderToggleActive: {
+    backgroundColor: COLORS.primary,
+  },
+  reminderToggleThumb: {
+    width: 26,
+    height: 26,
+    backgroundColor: COLORS.cardBackground,
+    borderRadius: 13,
+  },
+  reminderToggleThumbActive: {
+    marginLeft: "auto",
+  },
+  reminderOptions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: SIZES.sm,
+    marginTop: SIZES.md,
+  },
+  reminderOption: {
+    paddingHorizontal: SIZES.md,
+    paddingVertical: SIZES.sm,
+    backgroundColor: COLORS.cardBackground,
+    borderRadius: SIZES.radiusFull,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  reminderOptionSelected: {
+    borderColor: COLORS.primary,
+  },
+  reminderOptionText: {
+    fontSize: SIZES.fontSm,
+    color: COLORS.lightText,
+  },
+  reminderOptionTextSelected: {
+    color: COLORS.darkText,
+    fontWeight: "600",
+  },
+  footer: {
+    paddingHorizontal: SIZES.lg,
+    paddingTop: SIZES.md,
+    backgroundColor: "transparent",
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  saveButton: {
+    borderRadius: SIZES.radiusLg,
+    overflow: "hidden",
+    ...SHADOWS.medium,
+  },
+  saveButtonGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: SIZES.md,
+  },
+  saveButtonText: {
+    fontSize: SIZES.fontLg,
+    fontWeight: "600",
+    color: COLORS.darkText,
+    marginLeft: SIZES.sm,
+  },
+});
+
+export default AddProcedureScreen;

@@ -1,0 +1,234 @@
+// App Navigator
+
+import React from "react";
+import { View, StyleSheet, TouchableOpacity } from "react-native";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { COLORS, SIZES, SHADOWS, GRADIENTS } from "../constants/theme";
+import { RootStackParamList, MainTabsParamList } from "../types";
+
+// Screens
+import OnboardingScreen from "../screens/OnboardingScreen";
+import HomeScreen from "../screens/HomeScreen";
+import ProfileScreen from "../screens/ProfileScreen";
+import AddProcedureScreen from "../screens/AddProcedureScreen";
+import ProcedureDetailsScreen from "../screens/ProcedureDetailsScreen";
+import PhotoComparisonScreen from "../screens/PhotoComparisonScreen";
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator<MainTabsParamList>();
+
+// Custom Tab Bar Component
+const CustomTabBar: React.FC<any> = ({ state, descriptors, navigation }) => {
+  const insets = useSafeAreaInsets();
+
+  const handleAddPress = () => {
+    navigation.navigate("AddProcedure");
+  };
+
+  return (
+    <View style={[styles.tabBarContainer, { paddingBottom: insets.bottom }]}>
+      <View style={styles.tabBarBackground}>
+        <View style={styles.tabBar}>
+          {state.routes.map((route: any, index: number) => {
+            const { options } = descriptors[route.key];
+            const isFocused = state.index === index;
+
+            const onPress = () => {
+              const event = navigation.emit({
+                type: "tabPress",
+                target: route.key,
+                canPreventDefault: true,
+              });
+
+              if (!isFocused && !event.defaultPrevented) {
+                navigation.navigate(route.name);
+              }
+            };
+
+            let iconName: keyof typeof Ionicons.glyphMap = "home-outline";
+            if (route.name === "Home") {
+              iconName = isFocused ? "home" : "home-outline";
+            } else if (route.name === "Profile") {
+              iconName = isFocused ? "person" : "person-outline";
+            }
+
+            return (
+              <TouchableOpacity
+                key={route.key}
+                onPress={onPress}
+                style={styles.tabButton}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={iconName}
+                  size={24}
+                  color={isFocused ? COLORS.primary : COLORS.mutedText}
+                />
+                <View
+                  style={[
+                    styles.tabIndicator,
+                    isFocused && styles.tabIndicatorActive,
+                  ]}
+                />
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* Floating Add Button */}
+      <TouchableOpacity
+        style={styles.fabContainer}
+        onPress={handleAddPress}
+        activeOpacity={0.9}
+      >
+        <LinearGradient
+          colors={GRADIENTS.primary}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.fab}
+        >
+          <Ionicons name="add" size={32} color="#FFFFFF" />
+        </LinearGradient>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+// Main Tabs Navigator
+const MainTabsNavigator: React.FC = () => {
+  return (
+    <Tab.Navigator
+      tabBar={(props) => <CustomTabBar {...props} />}
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
+    </Tab.Navigator>
+  );
+};
+
+// Main App Navigator
+const AppNavigator: React.FC = () => {
+  // Set to true to skip onboarding for development
+  const skipOnboarding = true;
+
+  return (
+    <NavigationContainer>
+      <Stack.Navigator
+        initialRouteName={skipOnboarding ? "MainTabs" : "Onboarding"}
+        screenOptions={{
+          headerShown: false,
+          animation: "slide_from_right",
+          contentStyle: { backgroundColor: COLORS.background },
+        }}
+      >
+        <Stack.Screen
+          name="Onboarding"
+          component={OnboardingScreen}
+          options={{
+            animation: "fade",
+          }}
+        />
+        <Stack.Screen
+          name="MainTabs"
+          component={MainTabsNavigator}
+          options={{
+            animation: "fade",
+          }}
+        />
+        <Stack.Screen
+          name="AddProcedure"
+          component={AddProcedureScreen}
+          options={{
+            presentation: "modal",
+            animation: "slide_from_bottom",
+          }}
+        />
+        <Stack.Screen
+          name="ProcedureDetails"
+          component={ProcedureDetailsScreen}
+          options={{
+            animation: "slide_from_right",
+          }}
+        />
+        <Stack.Screen
+          name="PhotoComparison"
+          component={PhotoComparisonScreen}
+          options={{
+            presentation: "fullScreenModal",
+            animation: "fade",
+          }}
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+};
+
+const styles = StyleSheet.create({
+  tabBarContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  tabBarBackground: {
+    backgroundColor: COLORS.cardBackground,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    borderTopLeftRadius: SIZES.radiusXl,
+    borderTopRightRadius: SIZES.radiusXl,
+    overflow: "hidden",
+    ...SHADOWS.medium,
+  },
+  tabBar: {
+    flexDirection: "row",
+    height: 60,
+    alignItems: "center",
+    justifyContent: "space-around",
+    paddingHorizontal: SIZES.xl,
+  },
+  tabButton: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: SIZES.sm,
+  },
+  tabLabel: {
+    fontSize: SIZES.fontXs,
+    marginTop: 4,
+  },
+  tabIndicator: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "transparent",
+    marginTop: 4,
+  },
+  tabIndicatorActive: {
+    backgroundColor: COLORS.primary,
+  },
+  fabContainer: {
+    position: "absolute",
+    top: -28,
+    alignSelf: "center",
+    ...SHADOWS.large,
+  },
+  fab: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+});
+
+export default AppNavigator;

@@ -1,17 +1,26 @@
 // Google Sign In Screen
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   StatusBar,
   TouchableOpacity,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as WebBrowser from 'expo-web-browser';
+import * as AuthSession from 'expo-auth-session';
 import { COLORS, SIZES, SHADOWS, GRADIENTS } from '../constants/theme';
+import { supabase } from '../lib/supabase';
+import { useAuthStore } from '../store/useAuthStore';
+
+// Register for redirects
+WebBrowser.maybeCompleteAuthSession();
 
 interface GoogleSignInScreenProps {
   navigation: any;
@@ -19,11 +28,76 @@ interface GoogleSignInScreenProps {
 
 const GoogleSignInScreen: React.FC<GoogleSignInScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const [isLoading, setIsLoading] = useState(false);
+  const { setSession } = useAuthStore();
 
-  const handleGoogleSignIn = () => {
-    // TODO: Implement Google Sign In with Supabase
-    // For now, just navigate to main app
-    navigation.replace('MainTabs');
+  // Create redirect URI for OAuth
+  const redirectUri = AuthSession.makeRedirectUri({
+    scheme: 'beautytrack',
+  });
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsLoading(true);
+
+      // Start OAuth flow with Supabase
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUri,
+          skipBrowserRedirect: true,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.url) {
+        // Open the OAuth URL in the browser
+        const result = await WebBrowser.openAuthSessionAsync(
+          data.url,
+          redirectUri,
+        );
+
+        if (result.type === 'success' && result.url) {
+          // Extract the tokens from the URL
+          const url = new URL(result.url);
+          const params = new URLSearchParams(url.hash.substring(1));
+          const accessToken = params.get('access_token');
+          const refreshToken = params.get('refresh_token');
+
+          if (accessToken) {
+            // Set the session manually
+            const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || '',
+            });
+
+            if (sessionError) {
+              throw sessionError;
+            }
+
+            if (sessionData.session) {
+              setSession(sessionData.session);
+              navigation.replace('MainTabs');
+            }
+          }
+        } else if (result.type === 'cancel') {
+          // User cancelled the sign-in
+          console.log('User cancelled sign-in');
+        }
+      }
+    } catch (error: any) {
+      console.error('Google Sign-In error:', error);
+      Alert.alert(
+        'Sign In Error',
+        error.message || 'An error occurred during sign in. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSkip = () => {
@@ -75,19 +149,26 @@ const GoogleSignInScreen: React.FC<GoogleSignInScreenProps> = ({ navigation }) =
         {/* Sign In Button */}
         <View style={styles.buttonContainer}>
           <TouchableOpacity
-            style={styles.googleButton}
+            style={[styles.googleButton, isLoading && styles.googleButtonDisabled]}
             onPress={handleGoogleSignIn}
             activeOpacity={0.9}
+            disabled={isLoading}
           >
             <View style={styles.googleButtonContent}>
-              <Ionicons 
-                name="logo-google" 
-                size={24} 
-                color="#4285F4" 
-              />
-              <Text style={styles.googleButtonText}>
-                Continue with Google
-              </Text>
+              {isLoading ? (
+                <ActivityIndicator size="small" color={COLORS.primary} />
+              ) : (
+                <>
+                  <Ionicons 
+                    name="logo-google" 
+                    size={24} 
+                    color="#4285F4" 
+                  />
+                  <Text style={styles.googleButtonText}>
+                    Continue with Google
+                  </Text>
+                </>
+              )}
             </View>
           </TouchableOpacity>
 
@@ -103,8 +184,9 @@ const GoogleSignInScreen: React.FC<GoogleSignInScreenProps> = ({ navigation }) =
             style={styles.skipLink}
             onPress={handleSkip}
             activeOpacity={0.7}
+            disabled={isLoading}
           >
-            <Text style={styles.skipText}>
+            <Text style={[styles.skipText, isLoading && styles.skipTextDisabled]}>
               Continue without signing in
             </Text>
           </TouchableOpacity>
@@ -212,11 +294,15 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.lg,
     ...SHADOWS.medium,
   },
+  googleButtonDisabled: {
+    opacity: 0.7,
+  },
   googleButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: SIZES.md,
+    minHeight: 24,
   },
   googleButtonText: {
     fontSize: SIZES.fontLg,
@@ -247,6 +333,9 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: '600',
   },
+  skipTextDisabled: {
+    opacity: 0.5,
+  },
   footer: {
     paddingTop: SIZES.lg,
     paddingHorizontal: SIZES.md,
@@ -264,4 +353,3 @@ const styles = StyleSheet.create({
 });
 
 export default GoogleSignInScreen;
-

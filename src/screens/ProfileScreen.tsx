@@ -9,6 +9,8 @@ import {
   TouchableOpacity,
   Switch,
   StatusBar,
+  Alert,
+  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -16,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS, SIZES, SHADOWS, GRADIENTS } from "../constants/theme";
 import AnimatedScreen from "../components/AnimatedScreen";
 import { useUserStore } from "../store/useUserStore";
+import { useAuthStore } from "../store/useAuthStore";
 
 interface ProfileScreenProps {
   navigation: any;
@@ -69,12 +72,26 @@ const SettingsItem: React.FC<SettingsItemProps> = ({
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const user = useUserStore((state) => state.user);
+  const localUser = useUserStore((state) => state.user);
   const updateUser = useUserStore((state) => state.updateUser);
-  const [faceIdEnabled, setFaceIdEnabled] = useState(user.faceIdEnabled);
-  const [darkModeEnabled, setDarkModeEnabled] = useState(user.darkModeEnabled);
+  const { user: authUser, session, signOut } = useAuthStore();
+  const [faceIdEnabled, setFaceIdEnabled] = useState(localUser.faceIdEnabled);
+  const [darkModeEnabled, setDarkModeEnabled] = useState(
+    localUser.darkModeEnabled
+  );
 
-  const usagePercent = (user.procedureCount / user.maxProcedures) * 100;
+  // Use authenticated user info if available, otherwise fall back to local user
+  const displayName =
+    authUser?.user_metadata?.full_name ||
+    authUser?.user_metadata?.name ||
+    localUser.name;
+  const displayEmail = authUser?.email || localUser.email;
+  const avatarUrl =
+    authUser?.user_metadata?.avatar_url || authUser?.user_metadata?.picture;
+  const isAuthenticated = !!session;
+
+  const usagePercent =
+    (localUser.procedureCount / localUser.maxProcedures) * 100;
 
   const handleFaceIdToggle = (value: boolean) => {
     setFaceIdEnabled(value);
@@ -84,6 +101,30 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const handleDarkModeToggle = (value: boolean) => {
     setDarkModeEnabled(value);
     updateUser({ darkModeEnabled: value });
+  };
+
+  const handleSignOut = () => {
+    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Sign Out",
+        style: "destructive",
+        onPress: async () => {
+          await signOut();
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "GoogleSignIn" }],
+          });
+        },
+      },
+    ]);
+  };
+
+  const handleSignIn = () => {
+    navigation.navigate("GoogleSignIn");
   };
 
   return (
@@ -129,29 +170,46 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             >
               <View style={styles.avatarContainer}>
                 <View style={styles.avatar}>
-                  <Ionicons
-                    name="person-outline"
-                    size={32}
-                    color={COLORS.primary}
-                  />
+                  {avatarUrl ? (
+                    <Image
+                      source={{ uri: avatarUrl }}
+                      style={styles.avatarImage}
+                    />
+                  ) : (
+                    <Ionicons
+                      name="person-outline"
+                      size={32}
+                      color={COLORS.primary}
+                    />
+                  )}
                 </View>
                 <View style={styles.profileInfo}>
-                  <Text style={styles.profileName}>{user.name}</Text>
-                  <Text style={styles.profileEmail}>{user.email}</Text>
+                  <Text style={styles.profileName}>{displayName}</Text>
+                  <Text style={styles.profileEmail}>{displayEmail}</Text>
                   <View style={styles.planBadge}>
                     <Text style={styles.planText}>
-                      {user.isPremium ? "Premium" : "Free Plan"}
+                      {localUser.isPremium ? "Premium" : "Free Plan"}
                     </Text>
                   </View>
                 </View>
               </View>
+
+              {/* Auth Status Badge */}
+              {isAuthenticated && (
+                <View style={styles.authBadge}>
+                  <Ionicons name="checkmark-circle" size={14} color="#4CAF50" />
+                  <Text style={styles.authBadgeText}>
+                    Signed in with Google
+                  </Text>
+                </View>
+              )}
 
               {/* Usage Bar */}
               <View style={styles.usageSection}>
                 <View style={styles.usageHeader}>
                   <Text style={styles.usageLabel}>Procedures used</Text>
                   <Text style={styles.usageCount}>
-                    {user.procedureCount} / {user.maxProcedures}
+                    {localUser.procedureCount} / {localUser.maxProcedures}
                   </Text>
                 </View>
                 <View style={styles.usageBarBg}>
@@ -234,18 +292,29 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             />
           </View>
 
-          {/* Sign Out */}
-          <TouchableOpacity style={styles.signOutButton}>
-            <Ionicons
-              name="log-out-outline"
-              size={20}
-              color={COLORS.darkText}
-            />
-            <Text style={styles.signOutText}>Sign Out</Text>
-          </TouchableOpacity>
+          {/* Sign In / Sign Out */}
+          {isAuthenticated ? (
+            <TouchableOpacity
+              style={styles.signOutButton}
+              onPress={handleSignOut}
+            >
+              <Ionicons name="log-out-outline" size={20} color="#E57B9D" />
+              <Text style={[styles.signOutText, { color: "#E57B9D" }]}>
+                Sign Out
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.signInButton}
+              onPress={handleSignIn}
+            >
+              <Ionicons name="logo-google" size={20} color="#4285F4" />
+              <Text style={styles.signInText}>Sign In with Google</Text>
+            </TouchableOpacity>
+          )}
 
           {/* Version */}
-          <Text style={styles.versionText}>Aesthetic Journal v1.0.0</Text>
+          <Text style={styles.versionText}>Beauty Track v1.0.0</Text>
         </ScrollView>
       </View>
     </AnimatedScreen>
@@ -295,7 +364,7 @@ const styles = StyleSheet.create({
   avatarContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: SIZES.lg,
+    marginBottom: SIZES.md,
   },
   avatar: {
     width: 64,
@@ -305,6 +374,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: SIZES.md,
+    overflow: "hidden",
+  },
+  avatarImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
   },
   profileInfo: {
     flex: 1,
@@ -331,6 +406,22 @@ const styles = StyleSheet.create({
     fontSize: SIZES.fontXs,
     fontWeight: "600",
     color: COLORS.primary,
+  },
+  authBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(76, 175, 80, 0.1)",
+    paddingHorizontal: SIZES.sm,
+    paddingVertical: 6,
+    borderRadius: SIZES.radiusSm,
+    marginBottom: SIZES.md,
+    alignSelf: "flex-start",
+  },
+  authBadgeText: {
+    fontSize: SIZES.fontXs,
+    color: "#4CAF50",
+    marginLeft: 4,
+    fontWeight: "500",
   },
   usageSection: {
     backgroundColor: COLORS.cardBackground,
@@ -407,6 +498,21 @@ const styles = StyleSheet.create({
     ...SHADOWS.small,
   },
   signOutText: {
+    fontSize: SIZES.fontMd,
+    fontWeight: "600",
+    marginLeft: SIZES.sm,
+  },
+  signInButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.cardBackground,
+    borderRadius: SIZES.radiusXl,
+    padding: SIZES.md,
+    marginBottom: SIZES.lg,
+    ...SHADOWS.small,
+  },
+  signInText: {
     fontSize: SIZES.fontMd,
     fontWeight: "600",
     color: COLORS.darkText,

@@ -1,7 +1,12 @@
 // App Navigator
 
-import React from "react";
-import { View, StyleSheet, TouchableOpacity } from "react-native";
+import React, { useEffect } from "react";
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -12,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS, SIZES, SHADOWS, GRADIENTS } from "../constants/theme";
 import { RootStackParamList, MainTabsParamList } from "../types";
 import { useSettingsStore } from "../store/useSettingsStore";
+import { useAuthStore } from "../store/useAuthStore";
 
 // Screens
 import OnboardingScreen from "../screens/OnboardingScreen";
@@ -24,6 +30,17 @@ import PhotoComparisonScreen from "../screens/PhotoComparisonScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabsParamList>();
+
+// Loading Screen Component
+const LoadingScreen: React.FC = () => (
+  <View style={styles.loadingContainer}>
+    <LinearGradient
+      colors={GRADIENTS.background}
+      style={StyleSheet.absoluteFill}
+    />
+    <ActivityIndicator size="large" color={COLORS.primary} />
+  </View>
+);
 
 // Custom Tab Bar Component
 const CustomTabBar: React.FC<any> = ({ state, descriptors, navigation }) => {
@@ -123,11 +140,33 @@ const AppNavigator: React.FC = () => {
   const hasSeenOnboarding = useSettingsStore(
     (state) => state.hasSeenOnboarding
   );
+  const { session, isLoading, isInitialized, initialize } = useAuthStore();
+
+  // Initialize auth on mount
+  useEffect(() => {
+    initialize();
+  }, []);
+
+  // Show loading screen while initializing
+  if (!isInitialized) {
+    return <LoadingScreen />;
+  }
+
+  // Determine initial route
+  const getInitialRoute = (): keyof RootStackParamList => {
+    if (!hasSeenOnboarding) {
+      return "Onboarding";
+    }
+    if (session) {
+      return "MainTabs";
+    }
+    return "GoogleSignIn";
+  };
 
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName={hasSeenOnboarding ? "MainTabs" : "Onboarding"}
+        initialRouteName={getInitialRoute()}
         screenOptions={{
           headerShown: false,
           animation: "slide_from_right",
@@ -184,6 +223,11 @@ const AppNavigator: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   tabBarContainer: {
     position: "absolute",
     bottom: 0,

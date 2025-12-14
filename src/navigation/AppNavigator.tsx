@@ -1,6 +1,6 @@
 // App Navigator
 
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   View,
   StyleSheet,
@@ -19,6 +19,7 @@ import { RootStackParamList, MainTabsParamList } from "../types";
 import { useSettingsStore } from "../store/useSettingsStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { useProcedureStore } from "../store/useProcedureStore";
+import { useGuestStore } from "../store/useGuestStore";
 
 // Screens
 import OnboardingScreen from "../screens/OnboardingScreen";
@@ -141,26 +142,80 @@ const AppNavigator: React.FC = () => {
   const hasSeenOnboarding = useSettingsStore(
     (state) => state.hasSeenOnboarding
   );
-  const { session, isLoading, isInitialized, initialize, user } =
+  const { session, isLoading, isInitialized, initialize, user, isGuest } =
     useAuthStore();
+  const { guestUserId, initializeGuest, isGuestMode } = useGuestStore();
   const fetchProcedures = useProcedureStore((state) => state.fetchProcedures);
+  const navigationRef = useRef<any>(null);
 
-  // Initialize auth on mount
+  // Initialize auth and guest on mount
   useEffect(() => {
-    initialize();
+    const initAuth = async () => {
+      await initialize();
+      // Only initialize guest mode if no session exists
+      // This is handled in GoogleSignInScreen when user chooses guest mode
+    };
+    initAuth();
   }, []);
 
-  // Fetch procedures when user is authenticated
+  // Fetch procedures when user is authenticated or in guest mode
   useEffect(() => {
-    if (isInitialized && user?.id) {
-      fetchProcedures(user.id).catch((error) => {
-        console.error("Failed to fetch procedures on app init:", error);
-      });
+    if (isInitialized) {
+      const currentUserId =
+        user?.id || (isGuestMode && guestUserId ? guestUserId : null);
+      if (currentUserId) {
+        fetchProcedures(currentUserId).catch((error) => {
+          console.error("Failed to fetch procedures on app init:", error);
+        });
+      }
     }
-  }, [isInitialized, user?.id, fetchProcedures]);
+  }, [isInitialized, user?.id, guestUserId, isGuestMode, fetchProcedures]);
+
+  // Navigate based on auth state changes
+  useEffect(() => {
+    if (!isInitialized || !navigationRef.current) {
+      return;
+    }
+
+    const navigateToCorrectScreen = () => {
+      if (!hasSeenOnboarding) {
+        navigationRef.current?.reset({
+          index: 0,
+          routes: [{ name: "Onboarding" }],
+        });
+        return;
+      }
+
+      // If authenticated, go to MainTabs
+      if (session) {
+        navigationRef.current?.reset({
+          index: 0,
+          routes: [{ name: "MainTabs" }],
+        });
+        return;
+      }
+
+      // If guest mode, go to MainTabs
+      if (isGuestMode && guestUserId) {
+        navigationRef.current?.reset({
+          index: 0,
+          routes: [{ name: "MainTabs" }],
+        });
+        return;
+      }
+
+      // Otherwise, go to sign-in
+      navigationRef.current?.reset({
+        index: 0,
+        routes: [{ name: "GoogleSignIn" }],
+      });
+    };
+
+    navigateToCorrectScreen();
+  }, [isInitialized, hasSeenOnboarding, session, isGuestMode, guestUserId]);
 
   // Show loading screen while initializing
-  if (!isInitialized) {
+  if (!isInitialized || isLoading) {
     return <LoadingScreen />;
   }
 
@@ -169,14 +224,15 @@ const AppNavigator: React.FC = () => {
     if (!hasSeenOnboarding) {
       return "Onboarding";
     }
-    if (session) {
+    // Allow access to MainTabs if authenticated OR in guest mode
+    if (session || (isGuestMode && guestUserId)) {
       return "MainTabs";
     }
     return "GoogleSignIn";
   };
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator
         initialRouteName={getInitialRoute()}
         screenOptions={{

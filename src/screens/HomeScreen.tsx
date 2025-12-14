@@ -23,6 +23,7 @@ import { Procedure } from "../types";
 import { useProcedureStore } from "../store/useProcedureStore";
 import { useUserStore } from "../store/useUserStore";
 import { useAuthStore } from "../store/useAuthStore";
+import { useGuestStore } from "../store/useGuestStore";
 import { useEffect } from "react";
 import { ActivityIndicator } from "react-native";
 
@@ -37,32 +38,37 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const isLoading = useProcedureStore((state) => state.isLoading);
   const fetchProcedures = useProcedureStore((state) => state.fetchProcedures);
   const user = useUserStore((state) => state.user);
-  const { user: authUser } = useAuthStore();
+  const { user: authUser, isGuest } = useAuthStore();
+  const { guestUserId, isGuestMode } = useGuestStore();
   const scrollY = React.useRef(new Animated.Value(0)).current;
+
+  // Get current user ID (guest or authenticated)
+  const currentUserId =
+    authUser?.id || (isGuestMode && guestUserId ? guestUserId : null);
 
   // Fetch procedures on mount
   useEffect(() => {
-    if (authUser?.id) {
-      fetchProcedures(authUser.id).catch((error) => {
+    if (currentUserId) {
+      fetchProcedures(currentUserId).catch((error) => {
         console.error("Failed to fetch procedures:", error);
       });
     }
-  }, [authUser?.id, fetchProcedures]);
+  }, [currentUserId, fetchProcedures]);
 
   const onRefresh = useCallback(async () => {
-    if (!authUser?.id) {
+    if (!currentUserId) {
       setRefreshing(false);
       return;
     }
     setRefreshing(true);
     try {
-      await fetchProcedures(authUser.id);
+      await fetchProcedures(currentUserId);
     } catch (error) {
       console.error("Failed to refresh procedures:", error);
     } finally {
       setRefreshing(false);
     }
-  }, [authUser?.id, fetchProcedures]);
+  }, [currentUserId, fetchProcedures]);
 
   const reminderCount = procedures.filter((p) => p.reminder?.enabled).length;
   const photoCount = procedures.reduce((acc, p) => acc + p.photos.length, 0);

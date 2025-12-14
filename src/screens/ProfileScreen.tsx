@@ -19,6 +19,7 @@ import { COLORS, SIZES, SHADOWS, GRADIENTS } from "../constants/theme";
 import AnimatedScreen from "../components/AnimatedScreen";
 import { useUserStore } from "../store/useUserStore";
 import { useAuthStore } from "../store/useAuthStore";
+import { useGuestStore } from "../store/useGuestStore";
 
 interface ProfileScreenProps {
   navigation: any;
@@ -74,18 +75,24 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const localUser = useUserStore((state) => state.user);
   const updateUser = useUserStore((state) => state.updateUser);
-  const { user: authUser, session, signOut } = useAuthStore();
+  const { user: authUser, session, signOut, isGuest } = useAuthStore();
+  const { isGuestMode } = useGuestStore();
   const [faceIdEnabled, setFaceIdEnabled] = useState(localUser.faceIdEnabled);
   const [darkModeEnabled, setDarkModeEnabled] = useState(
     localUser.darkModeEnabled
   );
 
+  // Check if user is in guest mode
+  const isGuestUser = isGuest || isGuestMode;
+
   // Use authenticated user info if available, otherwise fall back to local user
-  const displayName =
-    authUser?.user_metadata?.full_name ||
-    authUser?.user_metadata?.name ||
-    localUser.name;
-  const displayEmail = authUser?.email || localUser.email;
+  // For guest users, show "Guest" and hide email
+  const displayName = isGuestUser
+    ? "Guest"
+    : authUser?.user_metadata?.full_name ||
+      authUser?.user_metadata?.name ||
+      localUser.name;
+  const displayEmail = isGuestUser ? null : authUser?.email || localUser.email;
   const avatarUrl =
     authUser?.user_metadata?.avatar_url || authUser?.user_metadata?.picture;
   const isAuthenticated = !!session;
@@ -185,12 +192,16 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                 </View>
                 <View style={styles.profileInfo}>
                   <Text style={styles.profileName}>{displayName}</Text>
-                  <Text style={styles.profileEmail}>{displayEmail}</Text>
-                  <View style={styles.planBadge}>
-                    <Text style={styles.planText}>
-                      {localUser.isPremium ? "Premium" : "Free Plan"}
-                    </Text>
-                  </View>
+                  {displayEmail && (
+                    <Text style={styles.profileEmail}>{displayEmail}</Text>
+                  )}
+                  {!isGuestUser && (
+                    <View style={styles.planBadge}>
+                      <Text style={styles.planText}>
+                        {localUser.isPremium ? "Premium" : "Free Plan"}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               </View>
 

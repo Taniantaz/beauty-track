@@ -16,6 +16,7 @@
 12. [Development Notes](#development-notes)
 13. [Future Enhancements](#future-enhancements)
 14. [Security Considerations](#security-considerations)
+15. [Guest Mode](#guest-mode)
 
 ---
 
@@ -1265,11 +1266,44 @@ The app is in a functional state for development and testing, with Google authen
 
 ---
 
-**Document Version**: 1.1  
-**Last Updated**: December 2024  
+**Document Version**: 1.2  
+**Last Updated**: January 2025  
 **Maintained By**: Development Team
 
 ### Changelog
 
+- **v1.2** (January 2025): Added Guest Mode with local storage and 3-entry soft limit
 - **v1.1** (December 2024): Added Google OAuth authentication with Supabase
 - **v1.0** (2024): Initial documentation
+
+---
+
+## Guest Mode
+
+The app now supports Guest Mode, allowing users to experience the app without authentication. Guest users can create up to 3 timeline entries, with data stored locally on the device.
+
+### Key Features
+
+- **No Forced Login**: Users can continue without creating an account
+- **3-Entry Soft Limit**: Guests can create up to 3 procedures
+- **Local Storage**: Guest data stored in AsyncStorage (device-only)
+- **Seamless Migration**: Guest data automatically migrates to Supabase when user signs in
+- **Privacy-First**: Guest data stays on device until user authenticates
+
+### Documentation
+
+For complete implementation details, see **[GUEST_MODE_IMPLEMENTATION.md](./GUEST_MODE_IMPLEMENTATION.md)**
+
+### Quick Reference
+
+**Guest Store**: `src/store/useGuestStore.ts`  
+**Guest Service**: `src/services/guestProcedureService.ts`  
+**Migration Service**: `src/services/guestMigrationService.ts`  
+**Login Modal**: `src/components/LoginPromptModal.tsx`
+
+### User Flow
+
+1. First launch → Choose "Continue without account"
+2. Create up to 3 procedures (stored locally)
+3. Attempt 4th procedure → Login prompt modal appears
+4. Sign in → All guest data migrates to Supabase automatically

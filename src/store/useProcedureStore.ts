@@ -11,7 +11,15 @@ import {
   ReminderData,
   PhotoData,
 } from '../services/procedureService';
+import {
+  fetchGuestProcedures,
+  createGuestProcedure,
+  updateGuestProcedure,
+  deleteGuestProcedure,
+} from '../services/guestProcedureService';
 import { useUserStore } from './useUserStore';
+import { useAuthStore } from './useAuthStore';
+import { useGuestStore } from './useGuestStore';
 
 interface ProcedureStore {
   procedures: Procedure[];
@@ -49,7 +57,20 @@ export const useProcedureStore = create<ProcedureStore>((set, get) => ({
   fetchProcedures: async (userId: string) => {
     try {
       set({ isLoading: true, error: null });
-      const procedures = await fetchProceduresFromService(userId);
+      
+      // Check if user is in guest mode
+      const { isGuest } = useAuthStore.getState();
+      const { isGuestMode } = useGuestStore.getState();
+      
+      let procedures: Procedure[];
+      if (isGuest || isGuestMode) {
+        // Fetch from local storage for guests
+        procedures = await fetchGuestProcedures(userId);
+      } else {
+        // Fetch from Supabase for authenticated users
+        procedures = await fetchProceduresFromService(userId);
+      }
+      
       set({ procedures, isLoading: false });
       
       // Update user stats based on fetched data
@@ -75,7 +96,19 @@ export const useProcedureStore = create<ProcedureStore>((set, get) => ({
   ) => {
     try {
       set({ isLoading: true, error: null });
-      const newProcedure = await createProcedureInService(userId, procedureData, photos, reminderData);
+      
+      // Check if user is in guest mode
+      const { isGuest } = useAuthStore.getState();
+      const { isGuestMode } = useGuestStore.getState();
+      
+      let newProcedure: Procedure;
+      if (isGuest || isGuestMode) {
+        // Create in local storage for guests
+        newProcedure = await createGuestProcedure(userId, procedureData, photos, reminderData);
+      } else {
+        // Create in Supabase for authenticated users
+        newProcedure = await createProcedureInService(userId, procedureData, photos, reminderData);
+      }
       
       set((state) => ({
         procedures: [newProcedure, ...state.procedures],
@@ -105,13 +138,31 @@ export const useProcedureStore = create<ProcedureStore>((set, get) => ({
   ) => {
     try {
       set({ isLoading: true, error: null });
-      const updatedProcedure = await updateProcedureInService(
-        procedureId,
-        userId,
-        updates,
-        newPhotos,
-        reminderData
-      );
+      
+      // Check if user is in guest mode
+      const { isGuest } = useAuthStore.getState();
+      const { isGuestMode } = useGuestStore.getState();
+      
+      let updatedProcedure: Procedure;
+      if (isGuest || isGuestMode) {
+        // Update in local storage for guests
+        updatedProcedure = await updateGuestProcedure(
+          userId,
+          procedureId,
+          updates,
+          newPhotos,
+          reminderData
+        );
+      } else {
+        // Update in Supabase for authenticated users
+        updatedProcedure = await updateProcedureInService(
+          procedureId,
+          userId,
+          updates,
+          newPhotos,
+          reminderData
+        );
+      }
       
       set((state) => ({
         procedures: state.procedures.map((p) =>
@@ -143,7 +194,18 @@ export const useProcedureStore = create<ProcedureStore>((set, get) => ({
       }
       
       set({ isLoading: true, error: null });
-      await deleteProcedureInService(procedureId, userId);
+      
+      // Check if user is in guest mode
+      const { isGuest } = useAuthStore.getState();
+      const { isGuestMode } = useGuestStore.getState();
+      
+      if (isGuest || isGuestMode) {
+        // Delete from local storage for guests
+        await deleteGuestProcedure(userId, procedureId);
+      } else {
+        // Delete from Supabase for authenticated users
+        await deleteProcedureInService(procedureId, userId);
+      }
       
       set((state) => ({
         procedures: state.procedures.filter((p) => p.id !== procedureId),

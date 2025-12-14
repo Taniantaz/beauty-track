@@ -24,8 +24,10 @@ import { Category, PhotoTag, ReminderInterval } from "../types";
 import Button from "../components/Button";
 import { useProcedureStore } from "../store/useProcedureStore";
 import { useAuthStore } from "../store/useAuthStore";
+import { useGuestStore } from "../store/useGuestStore";
 import { calculateReminderNextDate } from "../services/procedureService";
 import { ActivityIndicator } from "react-native";
+import { LoginPromptModal } from "../components/LoginPromptModal";
 
 interface AddProcedureScreenProps {
   navigation: any;
@@ -46,9 +48,10 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const isEditing = route?.params?.procedureId;
-  const { addProcedure, updateProcedure, getProcedureById, isLoading } =
+  const { addProcedure, updateProcedure, getProcedureById, isLoading, procedures } =
     useProcedureStore();
-  const { user } = useAuthStore();
+  const { user, isGuest } = useAuthStore();
+  const { guestUserId, isGuestMode } = useGuestStore();
 
   const [procedureName, setProcedureName] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<Category>("face");
@@ -64,6 +67,7 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
   const [reminderInterval, setReminderInterval] = useState("90days");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   // Load procedure data if editing
   useEffect(() => {
@@ -161,9 +165,20 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
       return;
     }
 
-    if (!user?.id) {
-      Alert.alert("Error", "You must be logged in to save procedures.");
+    // Get current user ID (guest or authenticated)
+    const currentUserId = user?.id || guestUserId;
+    if (!currentUserId) {
+      Alert.alert("Error", "Unable to identify user. Please try again.");
       return;
+    }
+
+    // Check guest limit: guests can only create 3 procedures
+    if ((isGuest || isGuestMode) && !isEditing) {
+      const currentProcedureCount = procedures.length;
+      if (currentProcedureCount >= 3) {
+        setShowLoginPrompt(true);
+        return;
+      }
     }
 
     if (saving) {
@@ -223,13 +238,13 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
         // For updates, only upload new photos (existing photos are already in DB)
         await updateProcedure(
           isEditing,
-          user.id,
+          currentUserId,
           procedureData,
           photoData,
           reminderData
         );
       } else {
-        await addProcedure(user.id, procedureData, photoData, reminderData);
+        await addProcedure(currentUserId, procedureData, photoData, reminderData);
       }
 
       navigation.goBack();
@@ -593,6 +608,22 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
           </LinearGradient>
         </TouchableOpacity>
       </View>
+
+      {/* Login Prompt Modal */}
+      <LoginPromptModal
+        visible={showLoginPrompt}
+        onCreateAccount={() => {
+          setShowLoginPrompt(false);
+          navigation.goBack();
+          // Navigate to sign-in screen
+          setTimeout(() => {
+            navigation.navigate('GoogleSignIn');
+          }, 300);
+        }}
+        onMaybeLater={() => {
+          setShowLoginPrompt(false);
+        }}
+      />
     </View>
   );
 };

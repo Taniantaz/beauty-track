@@ -15,6 +15,7 @@
 11. [Dependencies](#dependencies)
 12. [Development Notes](#development-notes)
 13. [Future Enhancements](#future-enhancements)
+14. [Security Considerations](#security-considerations)
 
 ---
 
@@ -123,11 +124,15 @@ beauty-track/
     │   ├── useProcedures.ts
     │   └── index.ts
     │
+    ├── lib/                   # External service configurations
+    │   └── supabase.ts        # Supabase client setup
+    │
     ├── navigation/            # Navigation configuration
     │   └── AppNavigator.tsx   # Main navigation setup
     │
     ├── screens/               # Screen components
     │   ├── AddProcedureScreen.tsx
+    │   ├── GoogleSignInScreen.tsx # Google OAuth sign-in
     │   ├── HomeScreen.tsx
     │   ├── OnboardingScreen.tsx
     │   ├── PhotoComparisonScreen.tsx
@@ -137,6 +142,7 @@ beauty-track/
     │
     ├── store/                 # Zustand state stores
     │   ├── index.ts
+    │   ├── useAuthStore.ts    # Authentication state (Supabase)
     │   ├── useProcedureStore.ts
     │   ├── useSettingsStore.ts
     │   └── useUserStore.ts
@@ -228,6 +234,19 @@ Nine procedure categories with distinct icons and colors:
 - **Skip Option**: Users can skip onboarding
 - **Persistence**: Onboarding status stored in settings
 
+### 8. Authentication (Google Sign-In)
+
+- **Provider**: Supabase Auth with Google OAuth
+- **Flow**: Onboarding → Google Sign-In → Main App
+- **Features**:
+  - Google OAuth 2.0 authentication
+  - Session persistence with AsyncStorage
+  - Auto token refresh
+  - Sign out functionality
+  - Skip option for guest usage
+- **User Data**: Fetches name, email, and avatar from Google profile
+- **Session Management**: Automatic session restoration on app launch
+
 ---
 
 ## State Management
@@ -291,6 +310,29 @@ Manages app-level settings.
 - `setIsDarkMode(value)` - Toggle dark mode
 - `reset()` - Reset all settings
 
+#### 4. Auth Store (`useAuthStore.ts`)
+
+Manages authentication state with Supabase.
+
+**State:**
+
+- `session: Session | null` - Current Supabase session
+- `user: User | null` - Authenticated user from Supabase
+- `isLoading: boolean` - Loading state during auth operations
+- `isInitialized: boolean` - Whether auth has been initialized
+
+**Actions:**
+
+- `setSession(session)` - Update the current session
+- `setLoading(loading)` - Set loading state
+- `initialize()` - Initialize auth, restore session, and listen for changes
+- `signOut()` - Sign out the current user
+
+**Auth Listener:**
+
+- Automatically listens for auth state changes via `supabase.auth.onAuthStateChange()`
+- Updates session and user state when auth events occur
+
 ### Deprecated: AppContext
 
 The `AppContext.tsx` file is marked as deprecated. All new code should use Zustand stores instead.
@@ -305,7 +347,8 @@ The app uses **React Navigation v7** with a combination of Stack and Tab navigat
 
 ```
 RootStackNavigator
-├── OnboardingScreen (conditional initial route)
+├── OnboardingScreen (conditional initial route - first time users)
+├── GoogleSignInScreen (authentication - after onboarding)
 ├── MainTabsNavigator
 │   ├── HomeScreen (Tab)
 │   └── ProfileScreen (Tab)
@@ -313,6 +356,14 @@ RootStackNavigator
 ├── ProcedureDetailsScreen (Stack)
 └── PhotoComparisonScreen (Full Screen Modal)
 ```
+
+### Initial Route Logic
+
+The initial route is determined by:
+
+1. If user hasn't seen onboarding → `Onboarding`
+2. If user has active session → `MainTabs`
+3. Otherwise → `GoogleSignIn`
 
 ### Navigation Types
 
@@ -560,7 +611,38 @@ Located in `src/data/mockData.ts`:
 
 - Replaces to `MainTabs` on completion
 
-### 2. HomeScreen
+### 2. GoogleSignInScreen
+
+**Purpose**: Authentication screen for Google Sign-In
+
+**Features**:
+
+- Google OAuth authentication via Supabase
+- Loading state during authentication
+- Error handling with user-friendly alerts
+- Skip option for guest users
+- Terms of Service and Privacy Policy links
+
+**Authentication Flow**:
+
+1. User taps "Continue with Google"
+2. Opens system browser with Google OAuth
+3. User authenticates with Google
+4. Redirect back to app with tokens
+5. Session stored in Supabase client
+6. Navigate to MainTabs
+
+**Components Used**:
+
+- `expo-web-browser` for OAuth flow
+- `expo-auth-session` for redirect URI generation
+- Supabase client for authentication
+
+**Navigation**:
+
+- Replaces to `MainTabs` on successful sign-in or skip
+
+### 3. HomeScreen
 
 **Purpose**: Main dashboard showing procedure timeline
 
@@ -581,7 +663,7 @@ Located in `src/data/mockData.ts`:
 - `TimelineIndicator`
 - `AnimatedScreen`
 
-### 3. AddProcedureScreen
+### 4. AddProcedureScreen
 
 **Purpose**: Add or edit procedures
 
@@ -612,7 +694,7 @@ Located in `src/data/mockData.ts`:
 - Modal presentation
 - Can edit existing procedure if `procedureId` passed in route params
 
-### 4. ProcedureDetailsScreen
+### 5. ProcedureDetailsScreen
 
 **Purpose**: View full procedure details
 
@@ -637,7 +719,7 @@ Located in `src/data/mockData.ts`:
 - Navigates to `PhotoComparison` if comparison available
 - Navigates to `AddProcedure` for editing
 
-### 5. PhotoComparisonScreen
+### 6. PhotoComparisonScreen
 
 **Purpose**: Interactive before/after photo comparison
 
@@ -656,13 +738,15 @@ Located in `src/data/mockData.ts`:
 - Pan responder for slider drag
 - Animated value for smooth transitions
 
-### 6. ProfileScreen
+### 7. ProfileScreen
 
 **Purpose**: User profile and settings
 
 **Features**:
 
 - Profile card with avatar, name, email, plan badge
+- **Displays authenticated user info** (name, email, avatar from Google)
+- **"Signed in with Google" badge** when authenticated
 - Usage bar showing procedure usage vs. limits
 - Security section:
   - Face ID Lock toggle
@@ -672,13 +756,16 @@ Located in `src/data/mockData.ts`:
   - Cloud Backup
   - Help & Support
   - Privacy & Terms
-- Sign Out button
+- **Dynamic Sign In/Sign Out button**:
+  - Shows "Sign Out" when authenticated (with confirmation dialog)
+  - Shows "Sign In with Google" when not authenticated
 - App version display
 
 **Components Used**:
 
 - `SettingsItem` (internal component)
 - `AnimatedScreen`
+- `useAuthStore` for authentication state
 
 ---
 
@@ -783,17 +870,21 @@ Located in `src/data/mockData.ts`:
 ```json
 {
   "@expo/vector-icons": "^15.0.3", // Icon library
-  "@react-native-async-storage/async-storage": "^2.2.0", // Local storage
+  "@react-native-async-storage/async-storage": "^2.2.0", // Local storage & Supabase session
   "@react-navigation/bottom-tabs": "^7.8.12", // Tab navigation
   "@react-navigation/native": "^7.1.25", // Navigation core
   "@react-navigation/native-stack": "^7.8.6", // Stack navigation
+  "@supabase/supabase-js": "^2.x", // Supabase client for auth
   "expo": "~54.0.29", // Expo SDK
+  "expo-auth-session": "^6.x", // OAuth redirect handling
   "expo-blur": "^15.0.8", // Blur effects
+  "expo-crypto": "^14.x", // Crypto for auth-session
   "expo-font": "^14.0.10", // Custom fonts
   "expo-haptics": "^15.0.8", // Haptic feedback
   "expo-image-picker": "^17.0.10", // Image selection
   "expo-linear-gradient": "^15.0.8", // Gradients
   "expo-status-bar": "~3.0.9", // Status bar control
+  "expo-web-browser": "^14.x", // OAuth browser flow
   "react": "19.1.0", // React
   "react-native": "0.81.5", // React Native
   "react-native-gesture-handler": "~2.28.0", // Gesture handling
@@ -821,6 +912,9 @@ Located in `src/data/mockData.ts`:
 - **expo-haptics**: Haptic feedback (ready for implementation)
 - **expo-blur**: Blur effects (available but not actively used)
 - **expo-status-bar**: Status bar styling
+- **expo-auth-session**: OAuth redirect URI handling
+- **expo-web-browser**: Opens OAuth flow in system browser
+- **expo-crypto**: Cryptographic functions for auth-session
 
 ---
 
@@ -862,8 +956,34 @@ Located in `src/data/mockData.ts`:
 ### Data Persistence
 
 - **Current**: In-memory state (Zustand stores)
-- **Future**: Should integrate `@react-native-async-storage/async-storage` for persistence
+- **Auth Sessions**: Persisted via AsyncStorage (Supabase client)
+- **Future**: Should integrate AsyncStorage for procedure data persistence
 - **Cloud Backup**: UI ready, backend not implemented
+
+### Supabase Configuration
+
+The app uses Supabase for authentication. Configuration is in `src/lib/supabase.ts`.
+
+**Client Setup**:
+
+```typescript
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: AsyncStorage, // Session persistence
+    autoRefreshToken: true, // Auto token refresh
+    persistSession: true, // Keep user logged in
+    detectSessionInUrl: false, // Disable for mobile
+  },
+});
+```
+
+**Required Supabase Dashboard Configuration**:
+
+1. Enable Google provider in Authentication → Providers
+2. Add Google OAuth credentials (Client ID & Secret)
+3. Add redirect URLs:
+   - Production: `beautytrack://` (custom scheme)
+   - Development: `exp://[your-expo-url]` (Expo Go)
 
 ### Error Handling
 
@@ -898,24 +1018,31 @@ Located in `src/data/mockData.ts`:
 
 2. **Cloud Sync**
 
-   - Backend API integration
-   - User authentication
+   - Backend API integration (Supabase database)
    - Real-time sync across devices
    - Cloud backup implementation
+   - Row Level Security (RLS) for user data isolation
 
-3. **Reminder Notifications**
+3. **Authentication Enhancements**
+
+   - Apple Sign-In support
+   - Email/password authentication option
+   - Account linking (multiple providers)
+   - Profile management (update name, avatar)
+
+4. **Reminder Notifications**
 
    - Local notification scheduling
    - Push notification support
    - Reminder management UI
 
-4. **Search & Filter**
+5. **Search & Filter**
 
    - Implement search functionality (UI exists, logic missing)
    - Filter procedures by category, date range
    - Sort options (date, cost, category)
 
-5. **Photo Management**
+6. **Photo Management**
    - Multiple photos per procedure
    - Photo editing/cropping
    - Image compression
@@ -1062,19 +1189,27 @@ Located in `src/data/mockData.ts`:
 
 ### Current State
 
-- No authentication implemented
-- No data encryption
-- Local storage only (no cloud sync)
+- **Google OAuth authentication implemented** via Supabase Auth
+- **Session persistence** with AsyncStorage
+- **Auto token refresh** handled by Supabase client
+- Local storage for app data (no cloud sync yet)
 - Face ID toggle exists but not functional
+- HTTPS communication with Supabase
+
+### Authentication Implementation
+
+- **Provider**: Supabase Auth with Google OAuth 2.0
+- **Token Storage**: Secure storage via AsyncStorage
+- **Session Management**: Automatic session restoration and refresh
+- **Sign Out**: Clears session from both client and Supabase
 
 ### Future Requirements
 
-- User authentication (email/password, OAuth)
+- Additional OAuth providers (Apple, email/password)
 - Biometric authentication (Face ID/Touch ID)
 - Data encryption at rest
-- Secure API communication (HTTPS)
-- Token-based authentication
-- Session management
+- Row Level Security (RLS) in Supabase
+- Secure cloud data sync
 
 ---
 
@@ -1087,6 +1222,12 @@ Located in `src/data/mockData.ts`:
 - **Orientation**: Portrait only
 - **New Architecture**: Enabled
 - **Platforms**: iOS, Android, Web
+- **URL Scheme**: `beautytrack` (for OAuth redirects)
+
+### Bundle Identifiers
+
+- **iOS**: `com.beautytrack.app`
+- **Android**: `com.beautytrack.app`
 
 ### Build Configuration
 
@@ -1113,16 +1254,22 @@ Located in `src/data/mockData.ts`:
 
 Beauty Track is a well-structured React Native application with a solid foundation for tracking cosmetic procedures. The app features:
 
-- **Modern Tech Stack**: React Native, Expo, TypeScript, Zustand
+- **Modern Tech Stack**: React Native, Expo, TypeScript, Zustand, Supabase
 - **Beautiful UI**: Carefully designed color palette and component system
 - **Core Features**: Procedure tracking, photo management, reminders
+- **Authentication**: Google OAuth via Supabase Auth
 - **Type Safety**: Comprehensive TypeScript definitions
 - **Scalable Architecture**: Component-based, state management with Zustand
 
-The app is in a functional state for development and testing, with clear paths for future enhancements including data persistence, cloud sync, notifications, and premium features.
+The app is in a functional state for development and testing, with Google authentication fully implemented. Clear paths exist for future enhancements including data persistence, cloud sync, notifications, and premium features.
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: 2024  
+**Document Version**: 1.1  
+**Last Updated**: December 2024  
 **Maintained By**: Development Team
+
+### Changelog
+
+- **v1.1** (December 2024): Added Google OAuth authentication with Supabase
+- **v1.0** (2024): Initial documentation

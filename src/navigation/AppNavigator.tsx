@@ -15,6 +15,7 @@ import { useSettingsStore } from "../store/useSettingsStore";
 
 // Screens
 import OnboardingScreen from "../screens/OnboardingScreen";
+import GoogleSignInScreen from "../screens/GoogleSignInScreen";
 import HomeScreen from "../screens/HomeScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import AddProcedureScreen from "../screens/AddProcedureScreen";
@@ -136,6 +137,13 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="Onboarding"
           component={OnboardingScreen}
+          options={{
+            animation: "fade",
+          }}
+        />
+        <Stack.Screen
+          name="GoogleSignIn"
+          component={GoogleSignInScreen}
           options={{
             animation: "fade",
           }}

@@ -83,6 +83,7 @@ export interface CategoryInfo {
 // Navigation types
 export type RootStackParamList = {
   Onboarding: undefined;
+  GoogleSignIn: undefined;
   MainTabs: undefined;
   ProcedureDetails: { procedureId: string };
   PhotoComparison: { procedureId: string };

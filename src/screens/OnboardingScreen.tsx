@@ -91,12 +91,12 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
 
   const handleComplete = () => {
     setHasSeenOnboarding(true);
-    navigation.replace('MainTabs');
+    navigation.replace('GoogleSignIn');
   };
 
   const handleSkip = () => {
     setHasSeenOnboarding(true);
-    navigation.replace('MainTabs');
+    navigation.replace('GoogleSignIn');
   };
 
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
@@ -210,7 +210,13 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
         </TouchableOpacity>
 
         {/* Sign In Link */}
-        <TouchableOpacity style={styles.signInLink}>
+        <TouchableOpacity 
+          style={styles.signInLink}
+          onPress={() => {
+            setHasSeenOnboarding(true);
+            navigation.replace('GoogleSignIn');
+          }}
+        >
           <Text style={styles.signInText}>
             Already have an account? <Text style={styles.signInTextBold}>Sign In</Text>
           </Text>

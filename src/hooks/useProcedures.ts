@@ -2,7 +2,6 @@
 
 import { useMemo } from 'react';
 import { Procedure, Category } from '../types';
-import { MOCK_PROCEDURES } from '../data/mockData';
 
 interface UseProceduresReturn {
   procedures: Procedure[];
@@ -17,7 +16,7 @@ interface UseProceduresReturn {
   };
 }
 
-export const useProcedures = (procedures: Procedure[] = MOCK_PROCEDURES): UseProceduresReturn => {
+export const useProcedures = (procedures: Procedure[] = []): UseProceduresReturn => {
   // Group procedures by category
   const proceduresByCategory = useMemo(() => {
     return procedures.reduce((acc, procedure) => {

@@ -20,6 +20,8 @@ import { formatDate, formatCurrency, getCategoryById, getReminderIntervalLabel }
 import CategoryIcon from '../components/CategoryIcon';
 import Button from '../components/Button';
 import { useProcedureStore } from '../store/useProcedureStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { ActivityIndicator } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -36,11 +38,13 @@ const ProcedureDetailsScreen: React.FC<ProcedureDetailsScreenProps> = ({
   const { procedureId } = route.params;
   const getProcedureById = useProcedureStore((state) => state.getProcedureById);
   const deleteProcedure = useProcedureStore((state) => state.deleteProcedure);
+  const { user } = useAuthStore();
   
   const procedure = getProcedureById(procedureId);
   const categoryInfo = procedure ? getCategoryById(procedure.category) : null;
   
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const [deleting, setDeleting] = useState(false);
 
   if (!procedure) {
     return (
@@ -59,6 +63,11 @@ const ProcedureDetailsScreen: React.FC<ProcedureDetailsScreenProps> = ({
   };
 
   const handleDelete = () => {
+    if (!user?.id) {
+      Alert.alert('Error', 'You must be logged in to delete procedures.');
+      return;
+    }
+
     Alert.alert(
       'Delete Procedure',
       'Are you sure you want to delete this procedure? This action cannot be undone.',
@@ -67,9 +76,20 @@ const ProcedureDetailsScreen: React.FC<ProcedureDetailsScreenProps> = ({
         { 
           text: 'Delete', 
           style: 'destructive',
-          onPress: () => {
-            deleteProcedure(procedureId);
-            navigation.goBack();
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              await deleteProcedure(procedureId, user.id);
+              navigation.goBack();
+            } catch (error) {
+              const errorMessage =
+                error instanceof Error
+                  ? error.message
+                  : 'Failed to delete procedure. Please try again.';
+              Alert.alert('Error', errorMessage);
+            } finally {
+              setDeleting(false);
+            }
           },
         },
       ]
@@ -324,9 +344,16 @@ const ProcedureDetailsScreen: React.FC<ProcedureDetailsScreenProps> = ({
           <TouchableOpacity 
             style={styles.deleteButton}
             onPress={handleDelete}
+            disabled={deleting}
           >
-            <Ionicons name="trash-outline" size={20} color={COLORS.error} />
-            <Text style={styles.deleteButtonText}>Delete</Text>
+            {deleting ? (
+              <ActivityIndicator size="small" color={COLORS.error} />
+            ) : (
+              <>
+                <Ionicons name="trash-outline" size={20} color={COLORS.error} />
+                <Text style={styles.deleteButtonText}>Delete</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>

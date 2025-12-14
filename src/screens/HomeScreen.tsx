@@ -22,6 +22,9 @@ import AnimatedScreen from "../components/AnimatedScreen";
 import { Procedure } from "../types";
 import { useProcedureStore } from "../store/useProcedureStore";
 import { useUserStore } from "../store/useUserStore";
+import { useAuthStore } from "../store/useAuthStore";
+import { useEffect } from "react";
+import { ActivityIndicator } from "react-native";
 
 interface HomeScreenProps {
   navigation: any;
@@ -31,13 +34,35 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const procedures = useProcedureStore((state) => state.procedures);
+  const isLoading = useProcedureStore((state) => state.isLoading);
+  const fetchProcedures = useProcedureStore((state) => state.fetchProcedures);
   const user = useUserStore((state) => state.user);
+  const { user: authUser } = useAuthStore();
   const scrollY = React.useRef(new Animated.Value(0)).current;
 
-  const onRefresh = useCallback(() => {
+  // Fetch procedures on mount
+  useEffect(() => {
+    if (authUser?.id) {
+      fetchProcedures(authUser.id).catch((error) => {
+        console.error("Failed to fetch procedures:", error);
+      });
+    }
+  }, [authUser?.id, fetchProcedures]);
+
+  const onRefresh = useCallback(async () => {
+    if (!authUser?.id) {
+      setRefreshing(false);
+      return;
+    }
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
-  }, []);
+    try {
+      await fetchProcedures(authUser.id);
+    } catch (error) {
+      console.error("Failed to refresh procedures:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [authUser?.id, fetchProcedures]);
 
   const reminderCount = procedures.filter((p) => p.reminder?.enabled).length;
   const photoCount = procedures.reduce((acc, p) => acc + p.photos.length, 0);
@@ -144,34 +169,42 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             </View>
 
             {/* Timeline List */}
-            <View style={styles.timeline}>
-              {procedures.map((procedure, index) => (
-                <View key={procedure.id}>
-                  <ProcedureCard
-                    procedure={procedure}
-                    onPress={() => handleProcedurePress(procedure)}
-                    index={index}
-                  />
-                  {/* Show timeline indicator between cards, not after the last one */}
-                  {index < procedures.length - 1 && <TimelineIndicator />}
-                </View>
-              ))}
-            </View>
-
-            {procedures.length === 0 && (
-              <View style={styles.emptyState}>
-                <View style={styles.emptyIconContainer}>
-                  <Ionicons
-                    name="flower-outline"
-                    size={48}
-                    color={COLORS.primary}
-                  />
-                </View>
-                <Text style={styles.emptyTitle}>Start Your Journey</Text>
-                <Text style={styles.emptyText}>
-                  Tap the + button to log your first{"\n"}cosmetic procedure
-                </Text>
+            {isLoading && !refreshing && procedures.length === 0 ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={COLORS.primary} />
               </View>
+            ) : (
+              <>
+                <View style={styles.timeline}>
+                  {procedures.map((procedure, index) => (
+                    <View key={procedure.id}>
+                      <ProcedureCard
+                        procedure={procedure}
+                        onPress={() => handleProcedurePress(procedure)}
+                        index={index}
+                      />
+                      {/* Show timeline indicator between cards, not after the last one */}
+                      {index < procedures.length - 1 && <TimelineIndicator />}
+                    </View>
+                  ))}
+                </View>
+
+                {procedures.length === 0 && !isLoading && (
+                  <View style={styles.emptyState}>
+                    <View style={styles.emptyIconContainer}>
+                      <Ionicons
+                        name="flower-outline"
+                        size={48}
+                        color={COLORS.primary}
+                      />
+                    </View>
+                    <Text style={styles.emptyTitle}>Start Your Journey</Text>
+                    <Text style={styles.emptyText}>
+                      Tap the + button to log your first{"\n"}cosmetic procedure
+                    </Text>
+                  </View>
+                )}
+              </>
             )}
           </View>
         </Animated.ScrollView>
@@ -280,6 +313,11 @@ const styles = StyleSheet.create({
     color: COLORS.lightText,
     textAlign: "center",
     lineHeight: 22,
+  },
+  loadingContainer: {
+    paddingVertical: SIZES.xxl,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
 

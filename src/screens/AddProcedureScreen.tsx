@@ -20,9 +20,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { COLORS, SIZES, SHADOWS, GRADIENTS } from "../constants/theme";
 import { CATEGORIES, PROCEDURE_SUGGESTIONS } from "../data/mockData";
-import { Category, Photo, PhotoTag, ReminderInterval } from "../types";
+import { Category, PhotoTag, ReminderInterval } from "../types";
 import Button from "../components/Button";
 import { useProcedureStore } from "../store/useProcedureStore";
+import { useAuthStore } from "../store/useAuthStore";
+import { calculateReminderNextDate } from "../services/procedureService";
+import { ActivityIndicator } from "react-native";
 
 interface AddProcedureScreenProps {
   navigation: any;
@@ -43,8 +46,9 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const isEditing = route?.params?.procedureId;
-  const { addProcedure, updateProcedure, getProcedureById } =
+  const { addProcedure, updateProcedure, getProcedureById, isLoading } =
     useProcedureStore();
+  const { user } = useAuthStore();
 
   const [procedureName, setProcedureName] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<Category>("face");
@@ -55,9 +59,11 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
   const [productBrand, setProductBrand] = useState("");
   const [beforePhotos, setBeforePhotos] = useState<string[]>([]);
   const [afterPhotos, setAfterPhotos] = useState<string[]>([]);
+  const [existingPhotoUris, setExistingPhotoUris] = useState<Set<string>>(new Set());
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [reminderInterval, setReminderInterval] = useState("90days");
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Load procedure data if editing
   useEffect(() => {
@@ -71,12 +77,13 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
         setCost(procedure.cost?.toString() || "");
         setNotes(procedure.notes || "");
         setProductBrand(procedure.productBrand || "");
-        setBeforePhotos(
-          procedure.photos.filter((p) => p.tag === "before").map((p) => p.uri)
-        );
-        setAfterPhotos(
-          procedure.photos.filter((p) => p.tag === "after").map((p) => p.uri)
-        );
+        const beforeUris = procedure.photos.filter((p) => p.tag === "before").map((p) => p.uri);
+        const afterUris = procedure.photos.filter((p) => p.tag === "after").map((p) => p.uri);
+        setBeforePhotos(beforeUris);
+        setAfterPhotos(afterUris);
+        // Track existing photo URIs (these are URLs from Supabase, not local files)
+        const existingUris = new Set([...beforeUris, ...afterUris]);
+        setExistingPhotoUris(existingUris);
         setReminderEnabled(procedure.reminder?.enabled ?? true);
         setReminderInterval(procedure.reminder?.interval || "90days");
       }
@@ -88,30 +95,55 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
   ).slice(0, 5);
 
   const pickImage = async (type: PhotoTag) => {
-    const permissionResult =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    try {
+      console.log('pickImage called for type:', type);
+      
+      // Request permissions
+      const permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-    if (permissionResult.granted === false) {
-      Alert.alert(
-        "Permission Required",
-        "Please allow access to your photo library."
-      );
-      return;
-    }
+      console.log('Permission result:', permissionResult);
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      if (type === "before") {
-        setBeforePhotos([...beforePhotos, result.assets[0].uri]);
-      } else {
-        setAfterPhotos([...afterPhotos, result.assets[0].uri]);
+      if (permissionResult.granted === false) {
+        Alert.alert(
+          "Permission Required",
+          "Please allow access to your photo library."
+        );
+        return;
       }
+
+      console.log('Launching image library...');
+      
+      // Launch image picker
+      // Omit mediaTypes - images is the default type
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      console.log('Image picker result:', result);
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const selectedImage = result.assets[0];
+        console.log('Selected image URI:', selectedImage.uri);
+        
+        if (type === "before") {
+          setBeforePhotos([...beforePhotos, selectedImage.uri]);
+        } else {
+          setAfterPhotos([...afterPhotos, selectedImage.uri]);
+        }
+      } else {
+        console.log('Image picker was canceled or no image selected');
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert(
+        "Error",
+        error instanceof Error 
+          ? error.message 
+          : "Failed to open image picker. Please try again."
+      );
     }
   };
 
@@ -123,82 +155,93 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!procedureName.trim()) {
       Alert.alert("Required", "Please enter a procedure name.");
       return;
     }
 
-    // Combine photos
-    const photos: Photo[] = [
-      ...beforePhotos.map((uri, index) => ({
-        id: `photo_before_${Date.now()}_${index}`,
-        uri,
-        tag: "before" as PhotoTag,
-        timestamp: date,
-      })),
-      ...afterPhotos.map((uri, index) => ({
-        id: `photo_after_${Date.now()}_${index}`,
-        uri,
-        tag: "after" as PhotoTag,
-        timestamp: date,
-      })),
-    ];
+    if (!user?.id) {
+      Alert.alert("Error", "You must be logged in to save procedures.");
+      return;
+    }
 
-    // Calculate next reminder date
-    let nextReminderDate: Date | undefined;
-    if (reminderEnabled) {
-      const now = new Date();
-      switch (reminderInterval) {
-        case "30days":
-          nextReminderDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-          break;
-        case "90days":
-          nextReminderDate = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
-          break;
-        case "6months":
-          nextReminderDate = new Date(
-            now.getTime() + 180 * 24 * 60 * 60 * 1000
-          );
-          break;
-        case "1year":
-          nextReminderDate = new Date(
-            now.getTime() + 365 * 24 * 60 * 60 * 1000
-          );
-          break;
-        default:
-          nextReminderDate = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+    if (saving) {
+      return; // Prevent double submission
+    }
+
+    setSaving(true);
+
+    try {
+      // Prepare photo data for upload
+      // Only upload new photos (local file URIs), not existing ones (URLs from Supabase)
+      const isLocalFile = (uri: string) => {
+        return uri.startsWith('file://') || uri.startsWith('content://') || uri.startsWith('ph://');
+      };
+      
+      const photoData = [
+        ...beforePhotos
+          .filter((uri) => isLocalFile(uri) && !existingPhotoUris.has(uri))
+          .map((uri) => ({
+            uri,
+            tag: "before" as const,
+          })),
+        ...afterPhotos
+          .filter((uri) => isLocalFile(uri) && !existingPhotoUris.has(uri))
+          .map((uri) => ({
+            uri,
+            tag: "after" as const,
+          })),
+      ];
+
+      // Prepare procedure data
+      const procedureData = {
+        name: procedureName.trim(),
+        category: selectedCategory,
+        date,
+        clinic: clinic.trim() || undefined,
+        cost: cost ? parseFloat(cost) : undefined,
+        notes: notes.trim() || undefined,
+        productBrand: productBrand.trim() || undefined,
+      };
+
+      // Calculate reminder data
+      let reminderData;
+      if (reminderEnabled) {
+        const nextDate = calculateReminderNextDate(
+          reminderInterval as ReminderInterval,
+          date
+        );
+        reminderData = {
+          interval: reminderInterval as ReminderInterval,
+          nextDate,
+          enabled: true,
+        };
       }
+
+      if (isEditing) {
+        // For updates, only upload new photos (existing photos are already in DB)
+        await updateProcedure(
+          isEditing,
+          user.id,
+          procedureData,
+          photoData,
+          reminderData
+        );
+      } else {
+        await addProcedure(user.id, procedureData, photoData, reminderData);
+      }
+
+      navigation.goBack();
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to save procedure. Please try again.";
+      Alert.alert("Error", errorMessage);
+    } finally {
+      setSaving(false);
     }
-
-    const procedureData = {
-      name: procedureName.trim(),
-      category: selectedCategory,
-      date,
-      clinic: clinic.trim() || undefined,
-      cost: cost ? parseFloat(cost) : undefined,
-      notes: notes.trim() || undefined,
-      productBrand: productBrand.trim() || undefined,
-      photos,
-      reminder:
-        reminderEnabled && nextReminderDate
-          ? {
-              id: `reminder_${Date.now()}`,
-              procedureId: isEditing || "",
-              interval: reminderInterval as ReminderInterval,
-              nextDate: nextReminderDate,
-              enabled: true,
-            }
-          : undefined,
-    };
-
-    if (isEditing) {
-      updateProcedure(isEditing, procedureData);
-    } else {
-      addProcedure(procedureData);
-    }
-
-    navigation.goBack();
   };
 
   const formatDateDisplay = (d: Date) => {
@@ -350,6 +393,7 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
               <TouchableOpacity
                 style={styles.photoUpload}
                 onPress={() => pickImage("before")}
+                activeOpacity={0.7}
               >
                 {beforePhotos.length > 0 ? (
                   <Image
@@ -375,6 +419,7 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
               <TouchableOpacity
                 style={styles.photoUpload}
                 onPress={() => pickImage("after")}
+                activeOpacity={0.7}
               >
                 {afterPhotos.length > 0 ? (
                   <Image
@@ -527,6 +572,7 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
           style={styles.saveButton}
           onPress={handleSave}
           activeOpacity={0.9}
+          disabled={saving || isLoading}
         >
           <LinearGradient
             colors={GRADIENTS.primary}
@@ -534,10 +580,16 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
             end={{ x: 1, y: 1 }}
             style={styles.saveButtonGradient}
           >
-            <Ionicons name="add" size={24} color="#FFFFFF" />
-            <Text style={styles.saveButtonText}>
-              {isEditing ? "Save Changes" : "Add Procedure"}
-            </Text>
+            {saving || isLoading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons name="add" size={24} color="#FFFFFF" />
+                <Text style={styles.saveButtonText}>
+                  {isEditing ? "Save Changes" : "Add Procedure"}
+                </Text>
+              </>
+            )}
           </LinearGradient>
         </TouchableOpacity>
       </View>

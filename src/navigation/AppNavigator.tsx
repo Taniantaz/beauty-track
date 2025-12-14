@@ -18,6 +18,7 @@ import { COLORS, SIZES, SHADOWS, GRADIENTS } from "../constants/theme";
 import { RootStackParamList, MainTabsParamList } from "../types";
 import { useSettingsStore } from "../store/useSettingsStore";
 import { useAuthStore } from "../store/useAuthStore";
+import { useProcedureStore } from "../store/useProcedureStore";
 
 // Screens
 import OnboardingScreen from "../screens/OnboardingScreen";
@@ -140,12 +141,23 @@ const AppNavigator: React.FC = () => {
   const hasSeenOnboarding = useSettingsStore(
     (state) => state.hasSeenOnboarding
   );
-  const { session, isLoading, isInitialized, initialize } = useAuthStore();
+  const { session, isLoading, isInitialized, initialize, user } =
+    useAuthStore();
+  const fetchProcedures = useProcedureStore((state) => state.fetchProcedures);
 
   // Initialize auth on mount
   useEffect(() => {
     initialize();
   }, []);
+
+  // Fetch procedures when user is authenticated
+  useEffect(() => {
+    if (isInitialized && user?.id) {
+      fetchProcedures(user.id).catch((error) => {
+        console.error("Failed to fetch procedures on app init:", error);
+      });
+    }
+  }, [isInitialized, user?.id, fetchProcedures]);
 
   // Show loading screen while initializing
   if (!isInitialized) {

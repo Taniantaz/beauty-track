@@ -37,10 +37,7 @@ export const LoginPromptModal: React.FC<LoginPromptModalProps> = ({
       <StatusBar barStyle="light-content" />
       <View style={styles.overlay}>
         <View style={[styles.modalContainer, { paddingBottom: insets.bottom + SIZES.lg }]}>
-          <LinearGradient
-            colors={GRADIENTS.card}
-            style={styles.modalContent}
-          >
+          <View style={styles.modalContent}>
             {/* Icon */}
             <View style={styles.iconContainer}>
               <View style={styles.iconCircle}>
@@ -53,16 +50,13 @@ export const LoginPromptModal: React.FC<LoginPromptModalProps> = ({
             </View>
 
             {/* Title */}
-            <Text style={styles.title}>Protect your timeline</Text>
+            <Text style={styles.title}>Save your timeline</Text>
 
             {/* Body */}
             <Text style={styles.body}>
-              You've created 3 entries.{'\n\n'}
-              Create a free account to securely save your timeline and access it anytime.
+              Guest mode is limited to 3 entries.{'\n\n'}
+              Create a free account to securely save your timeline and continue.
             </Text>
-
-            {/* Secondary text */}
-            <Text style={styles.secondaryText}>Takes less than 10 seconds.</Text>
 
             {/* Buttons */}
             <View style={styles.buttonContainer}>
@@ -91,7 +85,7 @@ export const LoginPromptModal: React.FC<LoginPromptModalProps> = ({
                 <Text style={styles.secondaryButtonText}>Maybe later</Text>
               </TouchableOpacity>
             </View>
-          </LinearGradient>
+          </View>
         </View>
       </View>
     </Modal>
@@ -111,6 +105,7 @@ const styles = StyleSheet.create({
     maxWidth: 400,
   },
   modalContent: {
+    backgroundColor: COLORS.cardBackground,
     borderRadius: SIZES.radiusXl,
     padding: SIZES.xl,
     ...SHADOWS.large,
@@ -140,13 +135,6 @@ const styles = StyleSheet.create({
     color: COLORS.lightText,
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: SIZES.sm,
-    paddingHorizontal: SIZES.sm,
-  },
-  secondaryText: {
-    fontSize: SIZES.fontSm,
-    color: COLORS.mutedText,
-    textAlign: 'center',
     marginBottom: SIZES.xl,
     paddingHorizontal: SIZES.sm,
   },

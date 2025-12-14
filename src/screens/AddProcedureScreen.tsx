@@ -18,6 +18,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
+import { Calendar } from "react-native-calendars";
 import { COLORS, SIZES, SHADOWS, GRADIENTS } from "../constants/theme";
 import { CATEGORIES, PROCEDURE_SUGGESTIONS } from "../data/mockData";
 import { Category, PhotoTag, ReminderInterval } from "../types";
@@ -48,8 +49,13 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const isEditing = route?.params?.procedureId;
-  const { addProcedure, updateProcedure, getProcedureById, isLoading, procedures } =
-    useProcedureStore();
+  const {
+    addProcedure,
+    updateProcedure,
+    getProcedureById,
+    isLoading,
+    procedures,
+  } = useProcedureStore();
   const { user, isGuest } = useAuthStore();
   const { guestUserId, isGuestMode } = useGuestStore();
 
@@ -62,12 +68,15 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
   const [productBrand, setProductBrand] = useState("");
   const [beforePhotos, setBeforePhotos] = useState<string[]>([]);
   const [afterPhotos, setAfterPhotos] = useState<string[]>([]);
-  const [existingPhotoUris, setExistingPhotoUris] = useState<Set<string>>(new Set());
+  const [existingPhotoUris, setExistingPhotoUris] = useState<Set<string>>(
+    new Set()
+  );
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [reminderInterval, setReminderInterval] = useState("90days");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
 
   // Load procedure data if editing
   useEffect(() => {
@@ -81,8 +90,12 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
         setCost(procedure.cost?.toString() || "");
         setNotes(procedure.notes || "");
         setProductBrand(procedure.productBrand || "");
-        const beforeUris = procedure.photos.filter((p) => p.tag === "before").map((p) => p.uri);
-        const afterUris = procedure.photos.filter((p) => p.tag === "after").map((p) => p.uri);
+        const beforeUris = procedure.photos
+          .filter((p) => p.tag === "before")
+          .map((p) => p.uri);
+        const afterUris = procedure.photos
+          .filter((p) => p.tag === "after")
+          .map((p) => p.uri);
         setBeforePhotos(beforeUris);
         setAfterPhotos(afterUris);
         // Track existing photo URIs (these are URLs from Supabase, not local files)
@@ -100,13 +113,13 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
 
   const pickImage = async (type: PhotoTag) => {
     try {
-      console.log('pickImage called for type:', type);
-      
+      console.log("pickImage called for type:", type);
+
       // Request permissions
       const permissionResult =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-      console.log('Permission result:', permissionResult);
+      console.log("Permission result:", permissionResult);
 
       if (permissionResult.granted === false) {
         Alert.alert(
@@ -116,8 +129,8 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
         return;
       }
 
-      console.log('Launching image library...');
-      
+      console.log("Launching image library...");
+
       // Launch image picker
       // Omit mediaTypes - images is the default type
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -126,26 +139,26 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
         quality: 0.8,
       });
 
-      console.log('Image picker result:', result);
+      console.log("Image picker result:", result);
 
       if (!result.canceled && result.assets && result.assets[0]) {
         const selectedImage = result.assets[0];
-        console.log('Selected image URI:', selectedImage.uri);
-        
+        console.log("Selected image URI:", selectedImage.uri);
+
         if (type === "before") {
           setBeforePhotos([...beforePhotos, selectedImage.uri]);
         } else {
           setAfterPhotos([...afterPhotos, selectedImage.uri]);
         }
       } else {
-        console.log('Image picker was canceled or no image selected');
+        console.log("Image picker was canceled or no image selected");
       }
     } catch (error) {
-      console.error('Error picking image:', error);
+      console.error("Error picking image:", error);
       Alert.alert(
         "Error",
-        error instanceof Error 
-          ? error.message 
+        error instanceof Error
+          ? error.message
           : "Failed to open image picker. Please try again."
       );
     }
@@ -191,9 +204,13 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
       // Prepare photo data for upload
       // Only upload new photos (local file URIs), not existing ones (URLs from Supabase)
       const isLocalFile = (uri: string) => {
-        return uri.startsWith('file://') || uri.startsWith('content://') || uri.startsWith('ph://');
+        return (
+          uri.startsWith("file://") ||
+          uri.startsWith("content://") ||
+          uri.startsWith("ph://")
+        );
       };
-      
+
       const photoData = [
         ...beforePhotos
           .filter((uri) => isLocalFile(uri) && !existingPhotoUris.has(uri))
@@ -244,7 +261,12 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
           reminderData
         );
       } else {
-        await addProcedure(currentUserId, procedureData, photoData, reminderData);
+        await addProcedure(
+          currentUserId,
+          procedureData,
+          photoData,
+          reminderData
+        );
       }
 
       navigation.goBack();
@@ -265,6 +287,19 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
       day: "2-digit",
       year: "numeric",
     });
+  };
+
+  const formatDateForCalendar = (d: Date) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const handleDateSelect = (day: { dateString: string }) => {
+    const selectedDate = new Date(day.dateString);
+    setDate(selectedDate);
+    setShowCalendar(false);
   };
 
   return (
@@ -386,7 +421,11 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
         {/* Date */}
         <View style={styles.section}>
           <Text style={styles.label}>Date</Text>
-          <TouchableOpacity style={styles.inputContainer}>
+          <TouchableOpacity
+            style={styles.inputContainer}
+            onPress={() => setShowCalendar(true)}
+            activeOpacity={0.7}
+          >
             <Ionicons
               name="calendar-outline"
               size={20}
@@ -609,6 +648,61 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
         </TouchableOpacity>
       </View>
 
+      {/* Calendar Modal */}
+      <Modal
+        visible={showCalendar}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowCalendar(false)}
+      >
+        <View style={styles.calendarModalOverlay}>
+          <View style={styles.calendarModalContent}>
+            <View style={styles.calendarHeader}>
+              <Text style={styles.calendarTitle}>Select Date</Text>
+              <TouchableOpacity
+                onPress={() => setShowCalendar(false)}
+                style={styles.calendarCloseButton}
+              >
+                <Ionicons name="close" size={24} color={COLORS.darkText} />
+              </TouchableOpacity>
+            </View>
+            <Calendar
+              current={formatDateForCalendar(date)}
+              markedDates={{
+                [formatDateForCalendar(date)]: {
+                  selected: true,
+                  selectedColor: COLORS.primary,
+                  selectedTextColor: "#FFFFFF",
+                },
+              }}
+              onDayPress={handleDateSelect}
+              theme={{
+                backgroundColor: COLORS.cardBackground,
+                calendarBackground: COLORS.cardBackground,
+                textSectionTitleColor: COLORS.mutedText,
+                selectedDayBackgroundColor: COLORS.primary,
+                selectedDayTextColor: "#FFFFFF",
+                todayTextColor: COLORS.primary,
+                dayTextColor: COLORS.darkText,
+                textDisabledColor: COLORS.border,
+                dotColor: COLORS.primary,
+                selectedDotColor: "#FFFFFF",
+                arrowColor: COLORS.primary,
+                monthTextColor: COLORS.darkText,
+                indicatorColor: COLORS.primary,
+                textDayFontWeight: "500",
+                textMonthFontWeight: "600",
+                textDayHeaderFontWeight: "600",
+                textDayFontSize: SIZES.fontMd,
+                textMonthFontSize: SIZES.fontLg,
+                textDayHeaderFontSize: SIZES.fontSm,
+              }}
+              style={styles.calendar}
+            />
+          </View>
+        </View>
+      </Modal>
+
       {/* Login Prompt Modal */}
       <LoginPromptModal
         visible={showLoginPrompt}
@@ -617,7 +711,7 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
           navigation.goBack();
           // Navigate to sign-in screen
           setTimeout(() => {
-            navigation.navigate('GoogleSignIn');
+            navigation.navigate("GoogleSignIn");
           }, 300);
         }}
         onMaybeLater={() => {
@@ -868,6 +962,45 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: COLORS.darkText,
     marginLeft: SIZES.sm,
+  },
+  calendarModalOverlay: {
+    flex: 1,
+    backgroundColor: COLORS.modalBackground,
+    justifyContent: "flex-end",
+  },
+  calendarModalContent: {
+    backgroundColor: COLORS.cardBackground,
+    borderTopLeftRadius: SIZES.radiusXl,
+    borderTopRightRadius: SIZES.radiusXl,
+    paddingTop: SIZES.md,
+    paddingBottom: SIZES.xl,
+    maxHeight: "80%",
+  },
+  calendarHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: SIZES.lg,
+    paddingBottom: SIZES.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  calendarTitle: {
+    fontSize: SIZES.fontXl,
+    fontWeight: "700",
+    color: COLORS.darkText,
+  },
+  calendarCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.inputBackground,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  calendar: {
+    paddingHorizontal: SIZES.md,
+    paddingBottom: SIZES.md,
   },
 });
 

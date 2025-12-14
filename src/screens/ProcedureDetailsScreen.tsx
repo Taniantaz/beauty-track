@@ -1,6 +1,6 @@
 // Procedure Details Screen
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,19 +11,25 @@ import {
   StatusBar,
   Alert,
   Dimensions,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, SIZES, SHADOWS, GRADIENTS } from '../constants/theme';
-import { formatDate, formatCurrency, getCategoryById, getReminderIntervalLabel } from '../data/mockData';
-import CategoryIcon from '../components/CategoryIcon';
-import Button from '../components/Button';
-import { useProcedureStore } from '../store/useProcedureStore';
-import { useAuthStore } from '../store/useAuthStore';
-import { ActivityIndicator } from 'react-native';
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
+import { COLORS, SIZES, SHADOWS, GRADIENTS } from "../constants/theme";
+import {
+  formatDate,
+  formatCurrency,
+  getCategoryById,
+  getReminderIntervalLabel,
+} from "../data/mockData";
+import CategoryIcon from "../components/CategoryIcon";
+import Button from "../components/Button";
+import { useProcedureStore } from "../store/useProcedureStore";
+import { useAuthStore } from "../store/useAuthStore";
+import { ActivityIndicator } from "react-native";
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface ProcedureDetailsScreenProps {
   navigation: any;
@@ -36,15 +42,25 @@ const ProcedureDetailsScreen: React.FC<ProcedureDetailsScreenProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const { procedureId } = route.params;
-  const getProcedureById = useProcedureStore((state) => state.getProcedureById);
   const deleteProcedure = useProcedureStore((state) => state.deleteProcedure);
+  // Subscribe to procedures array so component re-renders when store updates
+  const procedures = useProcedureStore((state) => state.procedures);
   const { user } = useAuthStore();
-  
-  const procedure = getProcedureById(procedureId);
+
+  // Get procedure from the subscribed procedures array - this will update automatically
+  const procedure = procedures.find((p) => p.id === procedureId);
   const categoryInfo = procedure ? getCategoryById(procedure.category) : null;
-  
+
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [deleting, setDeleting] = useState(false);
+
+  // Force re-render when screen comes into focus to ensure latest data is displayed
+  useFocusEffect(
+    useCallback(() => {
+      // Component will automatically re-render because we're subscribed to procedures array
+      // This callback ensures we're ready to display updated data
+    }, [])
+  );
 
   if (!procedure) {
     return (
@@ -54,28 +70,28 @@ const ProcedureDetailsScreen: React.FC<ProcedureDetailsScreenProps> = ({
     );
   }
 
-  const beforePhotos = procedure.photos.filter(p => p.tag === 'before');
-  const afterPhotos = procedure.photos.filter(p => p.tag === 'after');
+  const beforePhotos = procedure.photos.filter((p) => p.tag === "before");
+  const afterPhotos = procedure.photos.filter((p) => p.tag === "after");
   const hasComparison = beforePhotos.length > 0 && afterPhotos.length > 0;
 
   const handleEdit = () => {
-    navigation.navigate('AddProcedure', { procedureId: procedure.id });
+    navigation.navigate("AddProcedure", { procedureId: procedure.id });
   };
 
   const handleDelete = () => {
     if (!user?.id) {
-      Alert.alert('Error', 'You must be logged in to delete procedures.');
+      Alert.alert("Error", "You must be logged in to delete procedures.");
       return;
     }
 
     Alert.alert(
-      'Delete Procedure',
-      'Are you sure you want to delete this procedure? This action cannot be undone.',
+      "Delete Procedure",
+      "Are you sure you want to delete this procedure? This action cannot be undone.",
       [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive',
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
           onPress: async () => {
             setDeleting(true);
             try {
@@ -85,8 +101,8 @@ const ProcedureDetailsScreen: React.FC<ProcedureDetailsScreenProps> = ({
               const errorMessage =
                 error instanceof Error
                   ? error.message
-                  : 'Failed to delete procedure. Please try again.';
-              Alert.alert('Error', errorMessage);
+                  : "Failed to delete procedure. Please try again.";
+              Alert.alert("Error", errorMessage);
             } finally {
               setDeleting(false);
             }
@@ -97,7 +113,7 @@ const ProcedureDetailsScreen: React.FC<ProcedureDetailsScreenProps> = ({
   };
 
   const handleCompare = () => {
-    navigation.navigate('PhotoComparison', { procedureId: procedure.id });
+    navigation.navigate("PhotoComparison", { procedureId: procedure.id });
   };
 
   return (
@@ -107,7 +123,7 @@ const ProcedureDetailsScreen: React.FC<ProcedureDetailsScreenProps> = ({
         style={StyleSheet.absoluteFill}
       />
       <StatusBar barStyle="light-content" />
-      
+
       {/* Photo Gallery Header */}
       <View style={styles.photoHeader}>
         {procedure.photos.length > 0 ? (
@@ -117,7 +133,9 @@ const ProcedureDetailsScreen: React.FC<ProcedureDetailsScreenProps> = ({
               pagingEnabled={true}
               showsHorizontalScrollIndicator={false}
               onMomentumScrollEnd={(e) => {
-                const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+                const index = Math.round(
+                  e.nativeEvent.contentOffset.x / SCREEN_WIDTH
+                );
                 setActivePhotoIndex(index);
               }}
             >
@@ -130,12 +148,14 @@ const ProcedureDetailsScreen: React.FC<ProcedureDetailsScreenProps> = ({
                 />
               ))}
             </ScrollView>
-            
+
             {/* Photo Tag Badge */}
             {procedure.photos[activePhotoIndex] && (
               <View style={styles.photoTagBadge}>
                 <Text style={styles.photoTagText}>
-                  {procedure.photos[activePhotoIndex].tag === 'before' ? 'Before' : 'After'}
+                  {procedure.photos[activePhotoIndex].tag === "before"
+                    ? "Before"
+                    : "After"}
                 </Text>
               </View>
             )}
@@ -157,7 +177,11 @@ const ProcedureDetailsScreen: React.FC<ProcedureDetailsScreenProps> = ({
           </>
         ) : (
           <View style={styles.noPhotoPlaceholder}>
-            <Ionicons name="camera-outline" size={48} color={COLORS.mutedText} />
+            <Ionicons
+              name="camera-outline"
+              size={48}
+              color={COLORS.mutedText}
+            />
             <Text style={styles.noPhotoText}>No photos yet</Text>
           </View>
         )}
@@ -175,12 +199,16 @@ const ProcedureDetailsScreen: React.FC<ProcedureDetailsScreenProps> = ({
           style={[styles.actionsButton, { top: insets.top + SIZES.sm }]}
           onPress={() => {}}
         >
-          <Ionicons name="ellipsis-horizontal" size={24} color={COLORS.darkText} />
+          <Ionicons
+            name="ellipsis-horizontal"
+            size={24}
+            color={COLORS.darkText}
+          />
         </TouchableOpacity>
 
         {/* Gradient Overlay */}
         <LinearGradient
-          colors={['transparent', COLORS.background]}
+          colors={["transparent", COLORS.background]}
           style={styles.headerGradient}
         />
       </View>
@@ -190,7 +218,7 @@ const ProcedureDetailsScreen: React.FC<ProcedureDetailsScreenProps> = ({
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: insets.bottom + 100 }
+          { paddingBottom: insets.bottom + 100 },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -205,7 +233,7 @@ const ProcedureDetailsScreen: React.FC<ProcedureDetailsScreenProps> = ({
 
         {/* Compare Button */}
         {hasComparison && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.compareButton}
             onPress={handleCompare}
           >
@@ -216,7 +244,9 @@ const ProcedureDetailsScreen: React.FC<ProcedureDetailsScreenProps> = ({
               style={styles.compareButtonGradient}
             >
               <Ionicons name="git-compare-outline" size={20} color="#FFFFFF" />
-              <Text style={styles.compareButtonText}>Compare Before & After</Text>
+              <Text style={styles.compareButtonText}>
+                Compare Before & After
+              </Text>
             </LinearGradient>
           </TouchableOpacity>
         )}
@@ -226,11 +256,17 @@ const ProcedureDetailsScreen: React.FC<ProcedureDetailsScreenProps> = ({
           {/* Date */}
           <View style={styles.detailRow}>
             <View style={styles.detailIcon}>
-              <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+              <Ionicons
+                name="calendar-outline"
+                size={20}
+                color={COLORS.primary}
+              />
             </View>
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>Date</Text>
-              <Text style={styles.detailValue}>{formatDate(procedure.date)}</Text>
+              <Text style={styles.detailValue}>
+                {formatDate(procedure.date)}
+              </Text>
             </View>
           </View>
 
@@ -238,7 +274,11 @@ const ProcedureDetailsScreen: React.FC<ProcedureDetailsScreenProps> = ({
           {procedure.clinic && (
             <View style={styles.detailRow}>
               <View style={styles.detailIcon}>
-                <Ionicons name="business-outline" size={20} color={COLORS.primary} />
+                <Ionicons
+                  name="business-outline"
+                  size={20}
+                  color={COLORS.primary}
+                />
               </View>
               <View style={styles.detailContent}>
                 <Text style={styles.detailLabel}>Provider</Text>
@@ -251,7 +291,11 @@ const ProcedureDetailsScreen: React.FC<ProcedureDetailsScreenProps> = ({
           {procedure.productBrand && (
             <View style={styles.detailRow}>
               <View style={styles.detailIcon}>
-                <Ionicons name="flask-outline" size={20} color={COLORS.primary} />
+                <Ionicons
+                  name="flask-outline"
+                  size={20}
+                  color={COLORS.primary}
+                />
               </View>
               <View style={styles.detailContent}>
                 <Text style={styles.detailLabel}>Product</Text>
@@ -264,11 +308,17 @@ const ProcedureDetailsScreen: React.FC<ProcedureDetailsScreenProps> = ({
           {procedure.cost && (
             <View style={styles.detailRow}>
               <View style={styles.detailIcon}>
-                <Ionicons name="card-outline" size={20} color={COLORS.primary} />
+                <Ionicons
+                  name="card-outline"
+                  size={20}
+                  color={COLORS.primary}
+                />
               </View>
               <View style={styles.detailContent}>
                 <Text style={styles.detailLabel}>Cost</Text>
-                <Text style={styles.detailValue}>{formatCurrency(procedure.cost)}</Text>
+                <Text style={styles.detailValue}>
+                  {formatCurrency(procedure.cost)}
+                </Text>
               </View>
             </View>
           )}
@@ -277,23 +327,36 @@ const ProcedureDetailsScreen: React.FC<ProcedureDetailsScreenProps> = ({
           {procedure.reminder && (
             <View style={[styles.detailRow, styles.detailRowLast]}>
               <View style={styles.detailIcon}>
-                <Ionicons name="notifications-outline" size={20} color={COLORS.primary} />
+                <Ionicons
+                  name="notifications-outline"
+                  size={20}
+                  color={COLORS.primary}
+                />
               </View>
               <View style={styles.detailContent}>
                 <Text style={styles.detailLabel}>Reminder</Text>
                 <Text style={styles.detailValue}>
-                  {getReminderIntervalLabel(procedure.reminder.interval)} - {formatDate(procedure.reminder.nextDate)}
+                  {getReminderIntervalLabel(procedure.reminder.interval)} -{" "}
+                  {formatDate(procedure.reminder.nextDate)}
                 </Text>
               </View>
-              <View style={[
-                styles.reminderBadge,
-                procedure.reminder.enabled ? styles.reminderBadgeActive : styles.reminderBadgeInactive
-              ]}>
-                <Text style={[
-                  styles.reminderBadgeText,
-                  procedure.reminder.enabled ? styles.reminderBadgeTextActive : styles.reminderBadgeTextInactive
-                ]}>
-                  {procedure.reminder.enabled ? 'Active' : 'Off'}
+              <View
+                style={[
+                  styles.reminderBadge,
+                  procedure.reminder.enabled
+                    ? styles.reminderBadgeActive
+                    : styles.reminderBadgeInactive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.reminderBadgeText,
+                    procedure.reminder.enabled
+                      ? styles.reminderBadgeTextActive
+                      : styles.reminderBadgeTextInactive,
+                  ]}
+                >
+                  {procedure.reminder.enabled ? "Active" : "Off"}
                 </Text>
               </View>
             </View>
@@ -322,7 +385,7 @@ const ProcedureDetailsScreen: React.FC<ProcedureDetailsScreenProps> = ({
                   />
                   <View style={styles.galleryPhotoTag}>
                     <Text style={styles.galleryPhotoTagText}>
-                      {photo.tag === 'before' ? 'B' : 'A'}
+                      {photo.tag === "before" ? "B" : "A"}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -333,15 +396,12 @@ const ProcedureDetailsScreen: React.FC<ProcedureDetailsScreenProps> = ({
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
-          <TouchableOpacity 
-            style={styles.editButton}
-            onPress={handleEdit}
-          >
+          <TouchableOpacity style={styles.editButton} onPress={handleEdit}>
             <Ionicons name="pencil-outline" size={20} color={COLORS.primary} />
             <Text style={styles.editButtonText}>Edit</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.deleteButton}
             onPress={handleDelete}
             disabled={deleting}
@@ -374,40 +434,40 @@ const styles = StyleSheet.create({
     height: 300,
   },
   photoTagBadge: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 60,
     left: SIZES.lg,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: "rgba(0,0,0,0.5)",
     paddingHorizontal: SIZES.md,
     paddingVertical: SIZES.xs,
     borderRadius: SIZES.radiusFull,
   },
   photoTagText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: SIZES.fontSm,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   paginationDots: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 60,
-    alignSelf: 'center',
-    flexDirection: 'row',
+    alignSelf: "center",
+    flexDirection: "row",
     gap: 6,
   },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.4)',
+    backgroundColor: "rgba(255,255,255,0.4)",
   },
   dotActive: {
-    backgroundColor: '#FFF',
+    backgroundColor: "#FFF",
     width: 24,
   },
   noPhotoPlaceholder: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   noPhotoText: {
     marginTop: SIZES.sm,
@@ -415,29 +475,29 @@ const styles = StyleSheet.create({
     color: COLORS.mutedText,
   },
   backButton: {
-    position: 'absolute',
+    position: "absolute",
     left: SIZES.md,
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: COLORS.cardBackground,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     ...SHADOWS.medium,
   },
   actionsButton: {
-    position: 'absolute',
+    position: "absolute",
     right: SIZES.md,
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: COLORS.cardBackground,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     ...SHADOWS.medium,
   },
   headerGradient: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
@@ -455,13 +515,13 @@ const styles = StyleSheet.create({
   },
   procedureName: {
     fontSize: SIZES.fontXxl,
-    fontWeight: '700',
+    fontWeight: "700",
     color: COLORS.darkText,
     marginBottom: SIZES.xs,
   },
   categoryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   categoryText: {
     fontSize: SIZES.fontMd,
@@ -470,19 +530,19 @@ const styles = StyleSheet.create({
   },
   compareButton: {
     borderRadius: SIZES.radiusLg,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: SIZES.lg,
     ...SHADOWS.small,
   },
   compareButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: SIZES.md,
   },
   compareButtonText: {
     fontSize: SIZES.fontMd,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.darkText,
     marginLeft: SIZES.sm,
   },
@@ -494,8 +554,8 @@ const styles = StyleSheet.create({
     ...SHADOWS.small,
   },
   detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: SIZES.md,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
@@ -508,8 +568,8 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: `${COLORS.primary}15`,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: SIZES.md,
   },
   detailContent: {
@@ -521,7 +581,7 @@ const styles = StyleSheet.create({
   },
   detailValue: {
     fontSize: SIZES.fontMd,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.darkText,
     marginTop: 2,
   },
@@ -538,7 +598,7 @@ const styles = StyleSheet.create({
   },
   reminderBadgeText: {
     fontSize: SIZES.fontXs,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   reminderBadgeTextActive: {
     color: COLORS.success,
@@ -568,51 +628,51 @@ const styles = StyleSheet.create({
   },
   gallerySectionTitle: {
     fontSize: SIZES.fontLg,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.darkText,
     marginBottom: SIZES.md,
   },
   galleryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: SIZES.sm,
   },
   galleryItem: {
     width: (SCREEN_WIDTH - SIZES.lg * 2 - SIZES.sm * 2) / 3,
     aspectRatio: 1,
     borderRadius: SIZES.radiusMd,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   galleryPhoto: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   galleryPhotoTag: {
-    position: 'absolute',
+    position: "absolute",
     top: SIZES.xs,
     left: SIZES.xs,
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   galleryPhotoTagText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: SIZES.fontXs,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   actionButtons: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: SIZES.md,
     marginTop: SIZES.md,
   },
   editButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: COLORS.cardBackground,
     paddingVertical: SIZES.md,
     borderRadius: SIZES.radiusLg,
@@ -621,15 +681,15 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     fontSize: SIZES.fontMd,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.primary,
     marginLeft: SIZES.sm,
   },
   deleteButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: COLORS.cardBackground,
     paddingVertical: SIZES.md,
     borderRadius: SIZES.radiusLg,
@@ -638,11 +698,10 @@ const styles = StyleSheet.create({
   },
   deleteButtonText: {
     fontSize: SIZES.fontMd,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.error,
     marginLeft: SIZES.sm,
   },
 });
 
 export default ProcedureDetailsScreen;
-

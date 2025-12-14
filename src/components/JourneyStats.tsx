@@ -31,8 +31,8 @@ const JourneyStats: React.FC<JourneyStatsProps> = ({
             <Ionicons name="sparkles" size={20} color={COLORS.primary} />
           </View>
           <View>
-            <Text style={styles.title}>Your Journey</Text>
-            <Text style={styles.subtitle}>Track your beauty evolution</Text>
+            <Text style={styles.title}>Overview</Text>
+            <Text style={styles.subtitle}>Your personal beauty timeline</Text>
           </View>
         </View>
 

@@ -102,10 +102,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             style={styles.headerGradient}
           >
             <View style={styles.headerContent}>
-              <View>
-                <Text style={styles.welcomeText}>Welcome back,</Text>
+              <View style={styles.nameRow}>
                 <View style={styles.nameRow}>
-                  <Text style={styles.nameText}>{user.name.split(" ")[0]}</Text>
+                  <Text style={styles.nameText}>Your Timeline</Text>
                   <Text style={styles.sparkle}> ✨</Text>
                 </View>
               </View>
@@ -162,7 +161,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           {/* Timeline Section */}
           <View style={styles.timelineSection}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Your Timeline</Text>
+              <Text style={styles.sectionTitle}>Recent Entries</Text>
               <Text style={styles.procedureCount}>
                 {procedures.length} procedures
               </Text>

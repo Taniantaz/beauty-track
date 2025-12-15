@@ -252,23 +252,32 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               }
               showArrow={false}
             />
-            <SettingsItem
-              icon="moon-outline"
-              iconColor="#7B9DC9"
-              title="Dark Mode"
-              subtitle="Easy on the eyes"
-              rightElement={
-                <Switch
-                  value={darkModeEnabled}
-                  onValueChange={handleDarkModeToggle}
-                  trackColor={{ false: COLORS.border, true: COLORS.primary }}
-                  thumbColor={
-                    darkModeEnabled ? COLORS.cardBackground : "#f4f3f4"
+            {/* Dark Mode */}
+            {/* TODO: Implement Dark Mode - currently disabled -- maybe create feature flag for this?*/}
+            {false && (
+              <>
+                <SettingsItem
+                  icon="moon-outline"
+                  iconColor="#7B9DC9"
+                  title="Dark Mode"
+                  subtitle="Easy on the eyes"
+                  rightElement={
+                    <Switch
+                      value={darkModeEnabled}
+                      onValueChange={handleDarkModeToggle}
+                      trackColor={{
+                        false: COLORS.border,
+                        true: COLORS.primary,
+                      }}
+                      thumbColor={
+                        darkModeEnabled ? COLORS.cardBackground : "#f4f3f4"
+                      }
+                    />
                   }
+                  showArrow={false}
                 />
-              }
-              showArrow={false}
-            />
+              </>
+            )}
           </View>
 
           {/* Premium & Features */}
@@ -278,7 +287,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               iconColor="#F2A679"
               title="Upgrade to Premium"
               subtitle="Unlimited procedures & photos"
-              onPress={() => {}}
+              onPress={() => navigation.navigate("PremiumUpgrade")}
             />
             <SettingsItem
               icon="cloud-outline"

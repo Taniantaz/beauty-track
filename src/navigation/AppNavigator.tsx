@@ -29,6 +29,7 @@ import ProfileScreen from "../screens/ProfileScreen";
 import AddProcedureScreen from "../screens/AddProcedureScreen";
 import ProcedureDetailsScreen from "../screens/ProcedureDetailsScreen";
 import PhotoComparisonScreen from "../screens/PhotoComparisonScreen";
+import PremiumUpgradeScreen from "../screens/PremiumUpgradeScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabsParamList>();
@@ -283,6 +284,14 @@ const AppNavigator: React.FC = () => {
           options={{
             presentation: "fullScreenModal",
             animation: "fade",
+          }}
+        />
+        <Stack.Screen
+          name="PremiumUpgrade"
+          component={PremiumUpgradeScreen}
+          options={{
+            presentation: "modal",
+            animation: "slide_from_bottom",
           }}
         />
       </Stack.Navigator>

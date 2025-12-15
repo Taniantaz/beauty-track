@@ -89,6 +89,7 @@ export type RootStackParamList = {
   PhotoComparison: { procedureId: string };
   AddProcedure: { procedureId?: string };
   Settings: undefined;
+  PremiumUpgrade: undefined;
 };
 
 export type MainTabsParamList = {

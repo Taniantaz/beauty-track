@@ -1,12 +1,19 @@
 // Procedure Service - Supabase Database Operations
 
-import { supabase } from '../lib/supabase';
-import { Procedure, Photo, Reminder, Category, ReminderInterval } from '../types';
+import { supabase } from "../lib/supabase";
+import {
+  Procedure,
+  Photo,
+  Reminder,
+  Category,
+  ReminderInterval,
+} from "../types";
 import {
   uploadToSupabaseStorage,
   deleteProcedurePhotos,
   getPhotoUrl,
-} from './photoService';
+} from "./photoService";
+import { useUserStore } from "../store/useUserStore";
 
 export interface ProcedureData {
   name: string;
@@ -27,7 +34,7 @@ export interface ReminderData {
 
 export interface PhotoData {
   uri: string;
-  tag: 'before' | 'after';
+  tag: "before" | "after";
 }
 
 /**
@@ -42,19 +49,19 @@ function calculateNextDate(
   const nextDate = new Date(date);
 
   switch (interval) {
-    case '30days':
+    case "30days":
       nextDate.setDate(nextDate.getDate() + 30);
       break;
-    case '90days':
+    case "90days":
       nextDate.setDate(nextDate.getDate() + 90);
       break;
-    case '6months':
+    case "6months":
       nextDate.setMonth(nextDate.getMonth() + 6);
       break;
-    case '1year':
+    case "1year":
       nextDate.setFullYear(nextDate.getFullYear() + 1);
       break;
-    case 'custom':
+    case "custom":
       if (customDays) {
         nextDate.setDate(nextDate.getDate() + customDays);
       }
@@ -71,10 +78,10 @@ export async function fetchProcedures(userId: string): Promise<Procedure[]> {
   try {
     // Fetch procedures with related photos and reminders
     const { data: procedures, error: proceduresError } = await supabase
-      .from('procedures')
-      .select('*')
-      .eq('user_id', userId)
-      .order('date', { ascending: false });
+      .from("procedures")
+      .select("*")
+      .eq("user_id", userId)
+      .order("date", { ascending: false });
 
     if (proceduresError) {
       throw new Error(`Failed to fetch procedures: ${proceduresError.message}`);
@@ -88,9 +95,9 @@ export async function fetchProcedures(userId: string): Promise<Procedure[]> {
 
     // Fetch photos for all procedures
     const { data: photos, error: photosError } = await supabase
-      .from('photos')
-      .select('*')
-      .in('procedure_id', procedureIds);
+      .from("photos")
+      .select("*")
+      .in("procedure_id", procedureIds);
 
     if (photosError) {
       throw new Error(`Failed to fetch photos: ${photosError.message}`);
@@ -98,9 +105,9 @@ export async function fetchProcedures(userId: string): Promise<Procedure[]> {
 
     // Fetch reminders for all procedures
     const { data: reminders, error: remindersError } = await supabase
-      .from('reminders')
-      .select('*')
-      .in('procedure_id', procedureIds);
+      .from("reminders")
+      .select("*")
+      .in("procedure_id", procedureIds);
 
     if (remindersError) {
       throw new Error(`Failed to fetch reminders: ${remindersError.message}`);
@@ -114,7 +121,7 @@ export async function fetchProcedures(userId: string): Promise<Procedure[]> {
           .map((p) => ({
             id: p.id,
             uri: getPhotoUrl(p.storage_path),
-            tag: p.tag as 'before' | 'after',
+            tag: p.tag as "before" | "after",
             timestamp: new Date(p.created_at),
           })) || [];
 
@@ -149,7 +156,7 @@ export async function fetchProcedures(userId: string): Promise<Procedure[]> {
       };
     });
   } catch (error) {
-    console.error('Error fetching procedures:', error);
+    console.error("Error fetching procedures:", error);
     throw error;
   }
 }
@@ -166,7 +173,7 @@ export async function createProcedure(
   try {
     // Insert procedure
     const { data: procedure, error: procedureError } = await supabase
-      .from('procedures')
+      .from("procedures")
       .insert({
         user_id: userId,
         name: procedureData.name,
@@ -185,10 +192,14 @@ export async function createProcedure(
     }
 
     if (!procedure) {
-      throw new Error('Failed to create procedure: No data returned');
+      throw new Error("Failed to create procedure: No data returned");
     }
 
     const procedureId = procedure.id;
+
+    // Get user premium status for photo compression
+    const userStore = useUserStore.getState();
+    const isPremium = userStore.user.isPremium;
 
     // Upload photos
     const uploadedPhotos: Photo[] = [];
@@ -198,12 +209,13 @@ export async function createProcedure(
           photo.uri,
           userId,
           procedureId,
-          photo.tag
+          photo.tag,
+          isPremium
         );
 
         // Insert photo record
         const { data: photoRecord, error: photoError } = await supabase
-          .from('photos')
+          .from("photos")
           .insert({
             procedure_id: procedureId,
             storage_path: uploadResult.storagePath,
@@ -213,7 +225,7 @@ export async function createProcedure(
           .single();
 
         if (photoError) {
-          console.error('Error saving photo record:', photoError);
+          console.error("Error saving photo record:", photoError);
           // Continue with other photos even if one fails
           continue;
         }
@@ -227,7 +239,7 @@ export async function createProcedure(
           });
         }
       } catch (photoError) {
-        console.error('Error uploading photo:', photoError);
+        console.error("Error uploading photo:", photoError);
         // Continue with other photos
       }
     }
@@ -236,7 +248,7 @@ export async function createProcedure(
     let reminder: Reminder | undefined;
     if (reminderData) {
       const { data: reminderRecord, error: reminderError } = await supabase
-        .from('reminders')
+        .from("reminders")
         .insert({
           procedure_id: procedureId,
           interval: reminderData.interval,
@@ -248,7 +260,7 @@ export async function createProcedure(
         .single();
 
       if (reminderError) {
-        console.error('Error creating reminder:', reminderError);
+        console.error("Error creating reminder:", reminderError);
       } else if (reminderRecord) {
         reminder = {
           id: reminderRecord.id,
@@ -276,7 +288,7 @@ export async function createProcedure(
       updatedAt: new Date(procedure.updated_at),
     };
   } catch (error) {
-    console.error('Error creating procedure:', error);
+    console.error("Error creating procedure:", error);
     throw error;
   }
 }
@@ -296,18 +308,20 @@ export async function updateProcedure(
     const updateData: any = {};
     if (updates.name !== undefined) updateData.name = updates.name;
     if (updates.category !== undefined) updateData.category = updates.category;
-    if (updates.date !== undefined) updateData.date = updates.date.toISOString();
-    if (updates.clinic !== undefined) updateData.clinic = updates.clinic || null;
+    if (updates.date !== undefined)
+      updateData.date = updates.date.toISOString();
+    if (updates.clinic !== undefined)
+      updateData.clinic = updates.clinic || null;
     if (updates.cost !== undefined) updateData.cost = updates.cost || null;
     if (updates.notes !== undefined) updateData.notes = updates.notes || null;
     if (updates.productBrand !== undefined)
       updateData.product_brand = updates.productBrand || null;
 
     const { data: procedure, error: procedureError } = await supabase
-      .from('procedures')
+      .from("procedures")
       .update(updateData)
-      .eq('id', procedureId)
-      .eq('user_id', userId)
+      .eq("id", procedureId)
+      .eq("user_id", userId)
       .select()
       .single();
 
@@ -316,8 +330,12 @@ export async function updateProcedure(
     }
 
     if (!procedure) {
-      throw new Error('Procedure not found or access denied');
+      throw new Error("Procedure not found or access denied");
     }
+
+    // Get user premium status for photo compression
+    const userStore = useUserStore.getState();
+    const isPremium = userStore.user.isPremium;
 
     // Upload new photos
     const uploadedPhotos: Photo[] = [];
@@ -327,11 +345,12 @@ export async function updateProcedure(
           photo.uri,
           userId,
           procedureId,
-          photo.tag
+          photo.tag,
+          isPremium
         );
 
         const { data: photoRecord, error: photoError } = await supabase
-          .from('photos')
+          .from("photos")
           .insert({
             procedure_id: procedureId,
             storage_path: uploadResult.storagePath,
@@ -341,7 +360,7 @@ export async function updateProcedure(
           .single();
 
         if (photoError) {
-          console.error('Error saving photo record:', photoError);
+          console.error("Error saving photo record:", photoError);
           continue;
         }
 
@@ -354,7 +373,7 @@ export async function updateProcedure(
           });
         }
       } catch (photoError) {
-        console.error('Error uploading photo:', photoError);
+        console.error("Error uploading photo:", photoError);
       }
     }
 
@@ -362,25 +381,25 @@ export async function updateProcedure(
     if (reminderData !== undefined) {
       // Check if reminder exists
       const { data: existingReminder } = await supabase
-        .from('reminders')
-        .select('id')
-        .eq('procedure_id', procedureId)
+        .from("reminders")
+        .select("id")
+        .eq("procedure_id", procedureId)
         .single();
 
       if (existingReminder) {
         // Update existing reminder
         await supabase
-          .from('reminders')
+          .from("reminders")
           .update({
             interval: reminderData.interval,
             custom_days: reminderData.customDays || null,
             next_date: reminderData.nextDate.toISOString(),
             enabled: reminderData.enabled,
           })
-          .eq('id', existingReminder.id);
+          .eq("id", existingReminder.id);
       } else {
         // Create new reminder
-        await supabase.from('reminders').insert({
+        await supabase.from("reminders").insert({
           procedure_id: procedureId,
           interval: reminderData.interval,
           custom_days: reminderData.customDays || null,
@@ -392,15 +411,17 @@ export async function updateProcedure(
 
     // Fetch updated procedure with all relations
     const updatedProcedures = await fetchProcedures(userId);
-    const updatedProcedure = updatedProcedures.find((p) => p.id === procedureId);
+    const updatedProcedure = updatedProcedures.find(
+      (p) => p.id === procedureId
+    );
 
     if (!updatedProcedure) {
-      throw new Error('Failed to fetch updated procedure');
+      throw new Error("Failed to fetch updated procedure");
     }
 
     return updatedProcedure;
   } catch (error) {
-    console.error('Error updating procedure:', error);
+    console.error("Error updating procedure:", error);
     throw error;
   }
 }
@@ -415,36 +436,36 @@ export async function deleteProcedure(
   try {
     // Get procedure to find user_id and delete photos from storage
     const { data: procedure } = await supabase
-      .from('procedures')
-      .select('id, user_id')
-      .eq('id', procedureId)
-      .eq('user_id', userId)
+      .from("procedures")
+      .select("id, user_id")
+      .eq("id", procedureId)
+      .eq("user_id", userId)
       .single();
 
     if (!procedure) {
-      throw new Error('Procedure not found or access denied');
+      throw new Error("Procedure not found or access denied");
     }
 
     // Delete photos from storage (cascade will handle database records)
     try {
       await deleteProcedurePhotos(userId, procedureId);
     } catch (storageError) {
-      console.error('Error deleting photos from storage:', storageError);
+      console.error("Error deleting photos from storage:", storageError);
       // Continue with database deletion even if storage deletion fails
     }
 
     // Delete procedure (cascade will delete photos and reminders)
     const { error: deleteError } = await supabase
-      .from('procedures')
+      .from("procedures")
       .delete()
-      .eq('id', procedureId)
-      .eq('user_id', userId);
+      .eq("id", procedureId)
+      .eq("user_id", userId);
 
     if (deleteError) {
       throw new Error(`Failed to delete procedure: ${deleteError.message}`);
     }
   } catch (error) {
-    console.error('Error deleting procedure:', error);
+    console.error("Error deleting procedure:", error);
     throw error;
   }
 }
@@ -459,9 +480,9 @@ export async function deletePhoto(
   try {
     // Delete from database (this will cascade if needed)
     const { error: dbError } = await supabase
-      .from('photos')
+      .from("photos")
       .delete()
-      .eq('id', photoId);
+      .eq("id", photoId);
 
     if (dbError) {
       throw new Error(`Failed to delete photo record: ${dbError.message}`);
@@ -469,15 +490,15 @@ export async function deletePhoto(
 
     // Delete from storage
     const { error: storageError } = await supabase.storage
-      .from('procedure-photos')
+      .from("procedure-photos")
       .remove([storagePath]);
 
     if (storageError) {
-      console.error('Error deleting photo from storage:', storageError);
+      console.error("Error deleting photo from storage:", storageError);
       // Don't throw - database record is already deleted
     }
   } catch (error) {
-    console.error('Error deleting photo:', error);
+    console.error("Error deleting photo:", error);
     throw error;
   }
 }
@@ -492,4 +513,3 @@ export function calculateReminderNextDate(
 ): Date {
   return calculateNextDate(interval, customDays, procedureDate);
 }
-

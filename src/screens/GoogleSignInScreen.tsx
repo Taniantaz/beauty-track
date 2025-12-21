@@ -35,9 +35,26 @@ const GoogleSignInScreen: React.FC<GoogleSignInScreenProps> = ({
   const insets = useSafeAreaInsets();
   const [isLoading, setIsLoading] = useState(false);
   const [isGuestLoading, setIsGuestLoading] = useState(false);
-  const { setSession, signInAnonymously, setGuestMode, user } = useAuthStore();
+  const {
+    setSession,
+    signInAnonymously,
+    setGuestMode,
+    user,
+    hasEverLoggedIn,
+    checkHasEverLoggedIn,
+  } = useAuthStore();
   const { initializeGuest, guestUserId, clearGuest } = useGuestStore();
   const { fetchProcedures } = useProcedureStore();
+  const [canUseGuestMode, setCanUseGuestMode] = useState(false);
+
+  // Check if guest mode is available on mount
+  useEffect(() => {
+    const checkGuestAvailability = async () => {
+      const hasLoggedIn = await checkHasEverLoggedIn();
+      setCanUseGuestMode(!hasLoggedIn);
+    };
+    checkGuestAvailability();
+  }, [checkHasEverLoggedIn]);
 
   // Create redirect URI for OAuth
   const redirectUri = AuthSession.makeRedirectUri({
@@ -88,11 +105,13 @@ const GoogleSignInScreen: React.FC<GoogleSignInScreenProps> = ({
             }
 
             if (sessionData.session && sessionData.session.user) {
-              setSession(sessionData.session);
+              // Mark as logged in (this sets hasEverLoggedIn = true)
+              await setSession(sessionData.session);
               setGuestMode(false);
 
               // Migrate guest data if user was in guest mode
               const currentGuestUserId = guestUserId;
+              let migrationSuccess = false;
               if (currentGuestUserId) {
                 try {
                   console.log(
@@ -106,6 +125,7 @@ const GoogleSignInScreen: React.FC<GoogleSignInScreenProps> = ({
                   await clearGuest();
                   // Refresh procedures to show migrated data
                   await fetchProcedures(sessionData.session.user.id);
+                  migrationSuccess = true;
                 } catch (migrationError) {
                   console.error("Error migrating guest data:", migrationError);
                   // Continue even if migration fails - user is still signed in
@@ -113,6 +133,18 @@ const GoogleSignInScreen: React.FC<GoogleSignInScreenProps> = ({
               }
 
               navigation.replace("MainTabs");
+
+              // Show success message after navigation (optional toast)
+              if (migrationSuccess) {
+                // Use setTimeout to show alert after navigation completes
+                setTimeout(() => {
+                  Alert.alert(
+                    "Welcome!",
+                    "Your guest timeline has been saved to your account.",
+                    [{ text: "OK" }]
+                  );
+                }, 500);
+              }
             }
           }
         } else if (result.type === "cancel") {
@@ -136,9 +168,34 @@ const GoogleSignInScreen: React.FC<GoogleSignInScreenProps> = ({
     try {
       setIsGuestLoading(true);
 
+      // Double-check that guest mode is still available
+      const hasLoggedIn = await checkHasEverLoggedIn();
+      if (hasLoggedIn) {
+        // Guest mode is permanently disabled
+        Alert.alert(
+          "Guest Mode Unavailable",
+          "Guest mode is no longer available. Please sign in to continue.",
+          [{ text: "OK" }]
+        );
+        setIsGuestLoading(false);
+        return;
+      }
+
       // Initialize guest mode with local storage (no Supabase anonymous auth needed)
       // Generate a local guest user ID
       const localGuestId = await initializeGuest();
+
+      // If initializeGuest returns empty string, guest mode is disabled
+      if (!localGuestId) {
+        Alert.alert(
+          "Guest Mode Unavailable",
+          "Guest mode is no longer available. Please sign in to continue.",
+          [{ text: "OK" }]
+        );
+        setIsGuestLoading(false);
+        return;
+      }
+
       setGuestMode(true);
 
       // Set guest mode in auth store
@@ -147,10 +204,11 @@ const GoogleSignInScreen: React.FC<GoogleSignInScreenProps> = ({
       navigation.replace("MainTabs");
     } catch (error) {
       console.error("Error continuing as guest:", error);
-      // Fallback: still allow guest mode with local ID
-      const localGuestId = await initializeGuest();
-      setGuestMode(true);
-      navigation.replace("MainTabs");
+      Alert.alert(
+        "Error",
+        "Unable to continue as guest. Please sign in to continue.",
+        [{ text: "OK" }]
+      );
     } finally {
       setIsGuestLoading(false);
     }
@@ -221,33 +279,35 @@ const GoogleSignInScreen: React.FC<GoogleSignInScreenProps> = ({
             </View>
           </TouchableOpacity>
 
-          {/* Option 2: Continue without account (Guest) */}
-          <TouchableOpacity
-            style={[
-              styles.secondaryOptionButton,
-              (isLoading || isGuestLoading) && styles.buttonDisabled,
-            ]}
-            onPress={handleContinueAsGuest}
-            activeOpacity={0.9}
-            disabled={isLoading || isGuestLoading}
-          >
-            <View style={styles.buttonContent}>
-              {isGuestLoading ? (
-                <ActivityIndicator size="small" color={COLORS.primary} />
-              ) : (
-                <>
-                  <Ionicons
-                    name="person-outline"
-                    size={24}
-                    color={COLORS.primary}
-                  />
-                  <Text style={styles.secondaryOptionText}>
-                    Continue without account
-                  </Text>
-                </>
-              )}
-            </View>
-          </TouchableOpacity>
+          {/* Option 2: Continue without account (Guest) - Only show if guest mode is available */}
+          {canUseGuestMode && (
+            <TouchableOpacity
+              style={[
+                styles.secondaryOptionButton,
+                (isLoading || isGuestLoading) && styles.buttonDisabled,
+              ]}
+              onPress={handleContinueAsGuest}
+              activeOpacity={0.9}
+              disabled={isLoading || isGuestLoading}
+            >
+              <View style={styles.buttonContent}>
+                {isGuestLoading ? (
+                  <ActivityIndicator size="small" color={COLORS.primary} />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="person-outline"
+                      size={24}
+                      color={COLORS.primary}
+                    />
+                    <Text style={styles.secondaryOptionText}>
+                      Continue without account
+                    </Text>
+                  </>
+                )}
+              </View>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Footer Text */}

@@ -1,17 +1,17 @@
 // Aesthetic Journal - TypeScript Types
 
-export type Category = 
-  | 'face' 
-  | 'skin' 
-  | 'body' 
-  | 'hair' 
-  | 'makeup' 
-  | 'brows' 
-  | 'lashes' 
-  | 'nails' 
-  | 'tan';
+export type Category =
+  | "face"
+  | "skin"
+  | "body"
+  | "hair"
+  | "makeup"
+  | "brows"
+  | "lashes"
+  | "nails"
+  | "tan";
 
-export type PhotoTag = 'before' | 'after';
+export type PhotoTag = "before" | "after";
 
 export interface Photo {
   id: string;
@@ -20,12 +20,12 @@ export interface Photo {
   timestamp: Date;
 }
 
-export type ReminderInterval = 
-  | '30days' 
-  | '90days' 
-  | '6months' 
-  | '1year' 
-  | 'custom';
+export type ReminderInterval =
+  | "30days"
+  | "90days"
+  | "6months"
+  | "1year"
+  | "custom";
 
 export interface Reminder {
   id: string;
@@ -96,4 +96,3 @@ export type MainTabsParamList = {
   Home: undefined;
   Profile: undefined;
 };
-

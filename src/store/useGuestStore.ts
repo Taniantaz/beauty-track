@@ -22,7 +22,18 @@ export const useGuestStore = create<GuestState>((set, get) => ({
   
   initializeGuest: async (supabaseUserId?: string) => {
     try {
-      // First, check if there's an authenticated session - if so, don't initialize guest mode
+      // First, check if user has ever logged in - if so, guest mode is permanently disabled
+      const { useAuthStore } = await import('./useAuthStore');
+      const hasEverLoggedIn = await useAuthStore.getState().checkHasEverLoggedIn();
+      
+      if (hasEverLoggedIn) {
+        // Guest mode is permanently disabled after first login
+        console.log('Guest mode disabled: user has logged in before');
+        await get().clearGuest();
+        return '';
+      }
+      
+      // Check if there's an authenticated session - if so, don't initialize guest mode
       const { supabase } = await import('../lib/supabase');
       const { data: { session } } = await supabase.auth.getSession();
       

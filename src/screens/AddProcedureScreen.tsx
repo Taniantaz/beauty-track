@@ -18,6 +18,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import { Calendar } from "react-native-calendars";
 import { COLORS, SIZES, SHADOWS, GRADIENTS } from "../constants/theme";
 import { CATEGORIES, PROCEDURE_SUGGESTIONS } from "../data/mockData";
@@ -26,6 +27,7 @@ import Button from "../components/Button";
 import { useProcedureStore } from "../store/useProcedureStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { useGuestStore } from "../store/useGuestStore";
+import { useUserStore } from "../store/useUserStore";
 import { calculateReminderNextDate } from "../services/procedureService";
 import { ActivityIndicator } from "react-native";
 import { LoginPromptModal } from "../components/LoginPromptModal";
@@ -58,6 +60,7 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
   } = useProcedureStore();
   const { user, isGuest } = useAuthStore();
   const { guestUserId, isGuestMode } = useGuestStore();
+  const { user: localUser } = useUserStore();
 
   const [procedureName, setProcedureName] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<Category>("face");
@@ -131,24 +134,54 @@ const AddProcedureScreen: React.FC<AddProcedureScreenProps> = ({
 
       console.log("Launching image library...");
 
+      // Determine if user is premium (for authenticated users) or guest (always free)
+      const isPremium = !isGuest && !isGuestMode && localUser.isPremium;
+
       // Launch image picker
-      // Omit mediaTypes - images is the default type
+      // Use maximum quality - compression will be handled by photoService for free users
+      // For guest users, compression happens after picking
       const result = await ImagePicker.launchImageLibraryAsync({
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.8,
+        quality: 1.0, // Get best quality from picker, compress later if needed
       });
 
       console.log("Image picker result:", result);
 
       if (!result.canceled && result.assets && result.assets[0]) {
-        const selectedImage = result.assets[0];
-        console.log("Selected image URI:", selectedImage.uri);
+        let imageUri = result.assets[0].uri;
+
+        // For guest users, compress images to save local storage space
+        // Use Standard/Optimized tier (same as free authenticated users)
+        // For authenticated users, compression happens during upload in photoService
+        if ((isGuest || isGuestMode) && !isPremium) {
+          try {
+            console.log(
+              "📉 Compressing image for guest user (Standard/Optimized tier)..."
+            );
+            const compressedImage = await ImageManipulator.manipulateAsync(
+              imageUri,
+              [{ resize: { width: 1440 } }], // Standard/Optimized: 1440px max width
+              {
+                compress: 0.65, // 65% quality (Standard/Optimized tier)
+                format: ImageManipulator.SaveFormat.JPEG,
+              }
+            );
+            imageUri = compressedImage.uri;
+            console.log("✅ Image compressed for guest user:", imageUri);
+          } catch (compressError) {
+            console.error(
+              "❌ Error compressing image for guest:",
+              compressError
+            );
+            // Continue with original image if compression fails
+          }
+        }
 
         if (type === "before") {
-          setBeforePhotos([...beforePhotos, selectedImage.uri]);
+          setBeforePhotos([...beforePhotos, imageUri]);
         } else {
-          setAfterPhotos([...afterPhotos, selectedImage.uri]);
+          setAfterPhotos([...afterPhotos, imageUri]);
         }
       } else {
         console.log("Image picker was canceled or no image selected");

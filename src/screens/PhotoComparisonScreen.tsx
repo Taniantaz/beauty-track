@@ -1,6 +1,6 @@
 // Photo Comparison Screen - Before/After Slider
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -11,13 +11,13 @@ import {
   Dimensions,
   PanResponder,
   Animated,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, SIZES, SHADOWS } from '../constants/theme';
-import { useProcedureStore } from '../store/useProcedureStore';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { COLORS, SIZES, SHADOWS } from "../constants/theme";
+import { useProcedureStore } from "../store/useProcedureStore";
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 interface PhotoComparisonScreenProps {
   navigation: any;
@@ -31,12 +31,12 @@ const PhotoComparisonScreen: React.FC<PhotoComparisonScreenProps> = ({
   const insets = useSafeAreaInsets();
   const { procedureId } = route.params;
   const getProcedureById = useProcedureStore((state) => state.getProcedureById);
-  
+
   const procedure = getProcedureById(procedureId);
-  
-  const beforePhoto = procedure?.photos.find(p => p.tag === 'before');
-  const afterPhoto = procedure?.photos.find(p => p.tag === 'after');
-  
+
+  const beforePhoto = procedure?.photos.find((p) => p.tag === "before");
+  const afterPhoto = procedure?.photos.find((p) => p.tag === "after");
+
   const [sliderPosition, setSliderPosition] = useState(SCREEN_WIDTH / 2);
   const sliderAnim = useRef(new Animated.Value(SCREEN_WIDTH / 2)).current;
 
@@ -45,7 +45,10 @@ const PhotoComparisonScreen: React.FC<PhotoComparisonScreenProps> = ({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderMove: (_, gestureState) => {
-        const newPosition = Math.max(50, Math.min(SCREEN_WIDTH - 50, gestureState.moveX));
+        const newPosition = Math.max(
+          50,
+          Math.min(SCREEN_WIDTH - 50, gestureState.moveX)
+        );
         sliderAnim.setValue(newPosition);
         setSliderPosition(newPosition);
       },
@@ -55,7 +58,9 @@ const PhotoComparisonScreen: React.FC<PhotoComparisonScreenProps> = ({
   if (!procedure || !beforePhoto || !afterPhoto) {
     return (
       <View style={styles.container}>
-        <Text style={styles.errorText}>Photos not available for comparison</Text>
+        <Text style={styles.errorText}>
+          Photos not available for comparison
+        </Text>
       </View>
     );
   }
@@ -65,7 +70,7 @@ const PhotoComparisonScreen: React.FC<PhotoComparisonScreenProps> = ({
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      
+
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + SIZES.sm }]}>
         <TouchableOpacity
@@ -86,15 +91,15 @@ const PhotoComparisonScreen: React.FC<PhotoComparisonScreenProps> = ({
           style={[styles.image, { height: imageHeight }]}
           resizeMode="cover"
         />
-        
+
         {/* Before Image (Clipped) */}
-        <Animated.View 
+        <Animated.View
           style={[
             styles.beforeImageContainer,
-            { 
+            {
               width: sliderAnim,
               height: imageHeight,
-            }
+            },
           ]}
         >
           <Image
@@ -108,7 +113,7 @@ const PhotoComparisonScreen: React.FC<PhotoComparisonScreenProps> = ({
         <Animated.View
           style={[
             styles.sliderContainer,
-            { left: Animated.subtract(sliderAnim, 20) }
+            { left: Animated.subtract(sliderAnim, 20) },
           ]}
           {...panResponder.panHandlers}
         >
@@ -116,7 +121,11 @@ const PhotoComparisonScreen: React.FC<PhotoComparisonScreenProps> = ({
           <View style={styles.sliderHandle}>
             <View style={styles.sliderArrows}>
               <Ionicons name="chevron-back" size={16} color={COLORS.darkText} />
-              <Ionicons name="chevron-forward" size={16} color={COLORS.darkText} />
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={COLORS.darkText}
+              />
             </View>
           </View>
           <View style={styles.sliderLine} />
@@ -134,13 +143,15 @@ const PhotoComparisonScreen: React.FC<PhotoComparisonScreenProps> = ({
       </View>
 
       {/* Procedure Info */}
-      <View style={[styles.infoBar, { paddingBottom: insets.bottom + SIZES.md }]}>
+      <View
+        style={[styles.infoBar, { paddingBottom: insets.bottom + SIZES.md }]}
+      >
         <Text style={styles.procedureName}>{procedure.name}</Text>
         <Text style={styles.procedureDate}>
-          {procedure.date.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
+          {procedure.date.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
           })}
         </Text>
       </View>
@@ -148,9 +159,7 @@ const PhotoComparisonScreen: React.FC<PhotoComparisonScreenProps> = ({
       {/* Instructions */}
       <View style={styles.instructions}>
         <Ionicons name="hand-left-outline" size={16} color={COLORS.mutedText} />
-        <Text style={styles.instructionsText}>
-          Drag the slider to compare
-        </Text>
+        <Text style={styles.instructionsText}>Drag the slider to compare</Text>
       </View>
     </View>
   );
@@ -159,12 +168,12 @@ const PhotoComparisonScreen: React.FC<PhotoComparisonScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: "#000",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: SIZES.lg,
     paddingBottom: SIZES.md,
   },
@@ -172,74 +181,74 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: SIZES.fontLg,
-    fontWeight: '600',
-    color: '#FFF',
+    fontWeight: "600",
+    color: "#FFF",
   },
   placeholder: {
     width: 40,
   },
   comparisonContainer: {
     flex: 1,
-    position: 'relative',
+    position: "relative",
   },
   image: {
     width: SCREEN_WIDTH,
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
   },
   beforeImageContainer: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   beforeImage: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
   },
   sliderContainer: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     bottom: 0,
     width: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     zIndex: 10,
   },
   sliderLine: {
     flex: 1,
     width: 3,
-    backgroundColor: '#FFF',
+    backgroundColor: "#FFF",
     ...SHADOWS.medium,
   },
   sliderHandle: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#FFF',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#FFF",
+    justifyContent: "center",
+    alignItems: "center",
     ...SHADOWS.large,
   },
   sliderArrows: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   labelContainer: {
-    position: 'absolute',
+    position: "absolute",
     top: SIZES.lg,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: SIZES.lg,
   },
   label: {
@@ -248,26 +257,26 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radiusFull,
   },
   labelBefore: {
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: "rgba(0,0,0,0.6)",
   },
   labelAfter: {
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: "rgba(0,0,0,0.6)",
   },
   labelText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: SIZES.fontSm,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   infoBar: {
-    backgroundColor: '#111',
+    backgroundColor: "#111",
     paddingHorizontal: SIZES.lg,
     paddingTop: SIZES.md,
-    alignItems: 'center',
+    alignItems: "center",
   },
   procedureName: {
     fontSize: SIZES.fontLg,
-    fontWeight: '600',
-    color: '#FFF',
+    fontWeight: "600",
+    color: "#FFF",
   },
   procedureDate: {
     fontSize: SIZES.fontSm,
@@ -275,12 +284,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   instructions: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 100,
-    alignSelf: 'center',
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.6)",
     paddingHorizontal: SIZES.md,
     paddingVertical: SIZES.sm,
     borderRadius: SIZES.radiusFull,
@@ -291,12 +300,11 @@ const styles = StyleSheet.create({
     marginLeft: SIZES.xs,
   },
   errorText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: SIZES.fontMd,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 100,
   },
 });
 
 export default PhotoComparisonScreen;
-

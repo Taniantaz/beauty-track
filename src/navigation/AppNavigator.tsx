@@ -143,8 +143,15 @@ const AppNavigator: React.FC = () => {
   const hasSeenOnboarding = useSettingsStore(
     (state) => state.hasSeenOnboarding
   );
-  const { session, isLoading, isInitialized, initialize, user, isGuest } =
-    useAuthStore();
+  const {
+    session,
+    isLoading,
+    isInitialized,
+    initialize,
+    user,
+    isGuest,
+    hasEverLoggedIn,
+  } = useAuthStore();
   const { guestUserId, initializeGuest, isGuestMode } = useGuestStore();
   const fetchProcedures = useProcedureStore((state) => state.fetchProcedures);
   const navigationRef = useRef<any>(null);
@@ -196,7 +203,17 @@ const AppNavigator: React.FC = () => {
         return;
       }
 
-      // If guest mode, go to MainTabs
+      // Check if user has ever logged in - if so, guest mode is disabled
+      if (hasEverLoggedIn) {
+        // User has logged in before, must sign in again (no guest mode)
+        navigationRef.current?.reset({
+          index: 0,
+          routes: [{ name: "GoogleSignIn" }],
+        });
+        return;
+      }
+
+      // If guest mode and hasEverLoggedIn is false, go to MainTabs
       if (isGuestMode && guestUserId) {
         navigationRef.current?.reset({
           index: 0,
@@ -205,7 +222,7 @@ const AppNavigator: React.FC = () => {
         return;
       }
 
-      // Otherwise, go to sign-in
+      // Otherwise, go to sign-in (guest mode available)
       navigationRef.current?.reset({
         index: 0,
         routes: [{ name: "GoogleSignIn" }],
@@ -213,7 +230,14 @@ const AppNavigator: React.FC = () => {
     };
 
     navigateToCorrectScreen();
-  }, [isInitialized, hasSeenOnboarding, session, isGuestMode, guestUserId]);
+  }, [
+    isInitialized,
+    hasSeenOnboarding,
+    session,
+    isGuestMode,
+    guestUserId,
+    hasEverLoggedIn,
+  ]);
 
   // Show loading screen while initializing
   if (!isInitialized || isLoading) {
@@ -225,10 +249,23 @@ const AppNavigator: React.FC = () => {
     if (!hasSeenOnboarding) {
       return "Onboarding";
     }
-    // Allow access to MainTabs if authenticated OR in guest mode
-    if (session || (isGuestMode && guestUserId)) {
+
+    // If authenticated, go to MainTabs
+    if (session) {
       return "MainTabs";
     }
+
+    // Check if user has ever logged in - if so, guest mode is disabled
+    if (hasEverLoggedIn) {
+      // User has logged in before, must sign in again (no guest mode)
+      return "GoogleSignIn";
+    }
+
+    // Allow access to MainTabs if in guest mode (only if hasEverLoggedIn is false)
+    if (isGuestMode && guestUserId) {
+      return "MainTabs";
+    }
+
     return "GoogleSignIn";
   };
 

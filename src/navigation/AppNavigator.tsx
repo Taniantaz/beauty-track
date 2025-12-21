@@ -186,19 +186,29 @@ const AppNavigator: React.FC = () => {
     }
 
     const navigateToCorrectScreen = () => {
-      if (!hasSeenOnboarding) {
-        navigationRef.current?.reset({
-          index: 0,
-          routes: [{ name: "Onboarding" }],
-        });
-        return;
-      }
-
-      // If authenticated, go to MainTabs
+      // If authenticated, skip onboarding and go to MainTabs
       if (session) {
         navigationRef.current?.reset({
           index: 0,
           routes: [{ name: "MainTabs" }],
+        });
+        return;
+      }
+
+      // If guest mode and hasEverLoggedIn is false, skip onboarding and go to MainTabs
+      if (isGuestMode && guestUserId) {
+        navigationRef.current?.reset({
+          index: 0,
+          routes: [{ name: "MainTabs" }],
+        });
+        return;
+      }
+
+      // Only show onboarding if user is not logged in and hasn't seen it
+      if (!hasSeenOnboarding) {
+        navigationRef.current?.reset({
+          index: 0,
+          routes: [{ name: "Onboarding" }],
         });
         return;
       }
@@ -209,15 +219,6 @@ const AppNavigator: React.FC = () => {
         navigationRef.current?.reset({
           index: 0,
           routes: [{ name: "GoogleSignIn" }],
-        });
-        return;
-      }
-
-      // If guest mode and hasEverLoggedIn is false, go to MainTabs
-      if (isGuestMode && guestUserId) {
-        navigationRef.current?.reset({
-          index: 0,
-          routes: [{ name: "MainTabs" }],
         });
         return;
       }
@@ -246,24 +247,25 @@ const AppNavigator: React.FC = () => {
 
   // Determine initial route
   const getInitialRoute = (): keyof RootStackParamList => {
-    if (!hasSeenOnboarding) {
-      return "Onboarding";
-    }
-
-    // If authenticated, go to MainTabs
+    // If authenticated, skip onboarding and go to MainTabs
     if (session) {
       return "MainTabs";
+    }
+
+    // If guest mode and hasEverLoggedIn is false, skip onboarding and go to MainTabs
+    if (isGuestMode && guestUserId) {
+      return "MainTabs";
+    }
+
+    // Only show onboarding if user is not logged in and hasn't seen it
+    if (!hasSeenOnboarding) {
+      return "Onboarding";
     }
 
     // Check if user has ever logged in - if so, guest mode is disabled
     if (hasEverLoggedIn) {
       // User has logged in before, must sign in again (no guest mode)
       return "GoogleSignIn";
-    }
-
-    // Allow access to MainTabs if in guest mode (only if hasEverLoggedIn is false)
-    if (isGuestMode && guestUserId) {
-      return "MainTabs";
     }
 
     return "GoogleSignIn";

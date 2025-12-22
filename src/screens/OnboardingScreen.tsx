@@ -1,6 +1,6 @@
 // Onboarding Screen
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -10,59 +10,56 @@ import {
   TouchableOpacity,
   Animated,
   StatusBar,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, SIZES, SHADOWS, GRADIENTS } from '../constants/theme';
-import { ONBOARDING_SLIDES } from '../data/mockData';
-import { useSettingsStore } from '../store/useSettingsStore';
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { COLORS, SIZES, SHADOWS, GRADIENTS } from "../constants/theme";
+import { ONBOARDING_SLIDES } from "../data/mockData";
+import { useSettingsStore } from "../store/useSettingsStore";
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 interface OnboardingScreenProps {
   navigation: any;
 }
 
 const OnboardingSlide: React.FC<{
-  item: typeof ONBOARDING_SLIDES[0];
+  item: (typeof ONBOARDING_SLIDES)[0];
   index: number;
 }> = ({ item, index }) => {
   const getIcon = () => {
     switch (item.image) {
-      case 'beauty':
-        return 'flower-outline';
-      case 'photos':
-        return 'images-outline';
-      case 'reminder':
-        return 'notifications-outline';
+      case "beauty":
+        return "flower-outline";
+      case "photos":
+        return "images-outline";
+      case "reminder":
+        return "notifications-outline";
       default:
-        return 'sparkles-outline';
+        return "sparkles-outline";
     }
   };
 
   return (
     <View style={styles.slide}>
       <View style={styles.illustrationContainer}>
-        <LinearGradient
-          colors={GRADIENTS.card}
-          style={styles.illustrationBg}
-        >
+        <LinearGradient colors={GRADIENTS.card} style={styles.illustrationBg}>
           <View style={styles.iconCircle}>
-            <Ionicons 
-              name={getIcon() as any} 
-              size={64} 
-              color={COLORS.primary} 
+            <Ionicons
+              name={getIcon() as any}
+              size={64}
+              color={COLORS.primary}
             />
           </View>
         </LinearGradient>
-        
+
         {/* Decorative elements */}
         <View style={[styles.floatingDot, styles.dot1]} />
         <View style={[styles.floatingDot, styles.dot2]} />
         <View style={[styles.floatingDot, styles.dot3]} />
       </View>
-      
+
       <View style={styles.textContainer}>
         <Text style={styles.title}>{item.title}</Text>
         <Text style={styles.description}>{item.description}</Text>
@@ -76,7 +73,9 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
-  const setHasSeenOnboarding = useSettingsStore((state) => state.setHasSeenOnboarding);
+  const setHasSeenOnboarding = useSettingsStore(
+    (state) => state.setHasSeenOnboarding
+  );
 
   const handleNext = () => {
     if (currentIndex < ONBOARDING_SLIDES.length - 1) {
@@ -91,12 +90,12 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
 
   const handleComplete = () => {
     setHasSeenOnboarding(true);
-    navigation.replace('GoogleSignIn');
+    navigation.replace("GoogleSignIn");
   };
 
   const handleSkip = () => {
     setHasSeenOnboarding(true);
-    navigation.replace('GoogleSignIn');
+    navigation.replace("GoogleSignIn");
   };
 
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
@@ -112,7 +111,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-      
+
       {/* Background Gradient */}
       <LinearGradient
         colors={GRADIENTS.background}
@@ -149,7 +148,12 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
       />
 
       {/* Bottom Section */}
-      <View style={[styles.bottomSection, { paddingBottom: insets.bottom + SIZES.lg }]}>
+      <View
+        style={[
+          styles.bottomSection,
+          { paddingBottom: insets.bottom + SIZES.lg },
+        ]}
+      >
         {/* Pagination Dots */}
         <View style={styles.pagination}>
           {ONBOARDING_SLIDES.map((_, index) => {
@@ -158,17 +162,23 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
               index * SCREEN_WIDTH,
               (index + 1) * SCREEN_WIDTH,
             ];
-            
+
             const dotWidth = scrollX.interpolate({
               inputRange,
-              outputRange: [8, 24, 8],
-              extrapolate: 'clamp',
+              outputRange: [8, 52, 8],
+              extrapolate: "clamp",
             });
-            
+
+            const dotHeight = scrollX.interpolate({
+              inputRange,
+              outputRange: [8, 8, 8],
+              extrapolate: "clamp",
+            });
+
             const dotOpacity = scrollX.interpolate({
               inputRange,
               outputRange: [0.3, 1, 0.3],
-              extrapolate: 'clamp',
+              extrapolate: "clamp",
             });
 
             return (
@@ -178,6 +188,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                   styles.paginationDot,
                   {
                     width: dotWidth,
+                    height: dotHeight,
                     opacity: dotOpacity,
                   },
                 ]}
@@ -199,28 +210,39 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
             style={styles.nextButtonGradient}
           >
             <Text style={styles.nextButtonText}>
-              {currentIndex === ONBOARDING_SLIDES.length - 1 ? 'Get Started' : 'Continue'}
+              {currentIndex === ONBOARDING_SLIDES.length - 1
+                ? "Start Your Beauty Timeline"
+                : "Continue"}
             </Text>
-            <Ionicons 
-              name="arrow-forward" 
-              size={20} 
-              color="#FFFFFF" 
-            />
+            <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
           </LinearGradient>
         </TouchableOpacity>
 
         {/* Sign In Link */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.signInLink}
           onPress={() => {
             setHasSeenOnboarding(true);
-            navigation.replace('GoogleSignIn');
+            navigation.replace("GoogleSignIn");
           }}
         >
           <Text style={styles.signInText}>
-            Already have an account? <Text style={styles.signInTextBold}>Sign In</Text>
+            Already have an account?{" "}
+            <Text style={styles.signInTextBold}>Sign In</Text>
           </Text>
         </TouchableOpacity>
+
+        {/* Trust Signal - Only on final screen */}
+        {currentIndex === ONBOARDING_SLIDES.length - 1 && (
+          <View style={styles.trustSignal}>
+            <Ionicons
+              name="lock-closed-outline"
+              size={16}
+              color={COLORS.lightText}
+            />
+            <Text style={styles.trustSignalText}>Your photos stay private</Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -229,10 +251,10 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
   skipButton: {
-    position: 'absolute',
+    position: "absolute",
     right: SIZES.lg,
     zIndex: 10,
     paddingHorizontal: SIZES.md,
@@ -241,7 +263,8 @@ const styles = StyleSheet.create({
   skipText: {
     fontSize: SIZES.fontMd,
     color: COLORS.lightText,
-    fontWeight: '500',
+    fontWeight: "500",
+    opacity: 0.7,
   },
   slide: {
     width: SCREEN_WIDTH,
@@ -250,28 +273,28 @@ const styles = StyleSheet.create({
   },
   illustrationContainer: {
     height: SCREEN_HEIGHT * 0.35,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: SIZES.xl,
   },
   illustrationBg: {
     width: 200,
     height: 200,
     borderRadius: 100,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   iconCircle: {
     width: 120,
     height: 120,
     borderRadius: 60,
     backgroundColor: COLORS.cardBackground,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     ...SHADOWS.medium,
   },
   floatingDot: {
-    position: 'absolute',
+    position: "absolute",
     borderRadius: 50,
     backgroundColor: COLORS.primary,
   },
@@ -297,29 +320,30 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   textContainer: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   title: {
     fontSize: SIZES.fontXxl,
-    fontWeight: '700',
-    color: COLORS.darkText,
-    textAlign: 'center',
+    fontWeight: "700",
+    color: COLORS.onboardingHeading,
+    textAlign: "center",
     marginBottom: SIZES.md,
   },
   description: {
     fontSize: SIZES.fontMd,
-    color: COLORS.lightText,
-    textAlign: 'center',
-    lineHeight: 24,
+    color: COLORS.onboardingBody,
+    fontWeight: "500",
+    textAlign: "center",
+    lineHeight: 26,
     paddingHorizontal: SIZES.md,
   },
   bottomSection: {
     paddingHorizontal: SIZES.xl,
   },
   pagination: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: SIZES.xl,
     gap: 8,
   },
@@ -330,24 +354,36 @@ const styles = StyleSheet.create({
   },
   nextButton: {
     borderRadius: SIZES.radiusXl,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: SIZES.lg,
     ...SHADOWS.medium,
   },
   nextButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 18,
     gap: SIZES.sm,
   },
   nextButtonText: {
     fontSize: SIZES.fontLg,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.darkText,
   },
+  trustSignal: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: SIZES.xs,
+  },
+  trustSignalText: {
+    fontSize: SIZES.fontSm,
+    color: COLORS.lightText,
+    fontWeight: "500",
+    opacity: 0.8,
+  },
   signInLink: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: SIZES.sm,
   },
   signInText: {
@@ -356,9 +392,8 @@ const styles = StyleSheet.create({
   },
   signInTextBold: {
     color: COLORS.primary,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
 
 export default OnboardingScreen;
-

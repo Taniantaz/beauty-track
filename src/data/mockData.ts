@@ -187,14 +187,14 @@ export const ONBOARDING_SLIDES: OnboardingSlide[] = [
     id: "1",
     title: "Track Your Beauty Journey",
     description:
-      "Log all your cosmetic procedures in one beautiful place. Never forget when you got your last treatment.",
+      "Keep every treatment, touch-up, and appointment beautifully organized — all in one place",
     image: "beauty",
   },
   {
     id: "2",
-    title: "Visualize Your Progress",
+    title: "See Your Transformation",
     description:
-      "Upload before & after photos and watch your transformation over time with our stunning comparison tools.",
+      "Compare before & after photos with an intuitive slider and watch your progress unfold.",
     image: "photos",
   },
   {

@@ -12,9 +12,13 @@ export const COLORS = {
 
   // Text colors
   darkText: "#3A2E5C", // Dark Plum (primary text)
-  warmCocoa: "#7A5A3A", // Warm Cocoa (secondary text)
+  warmCocoa: "#3F3A52", // Warm Cocoa (secondary text)
   lightText: "#9A93B8", // Muted Gray (secondary text, for backward compatibility)
   mutedText: "#9A93B8", // Muted Gray (icons, inactive)
+
+  // Onboarding specific colors
+  onboardingHeading: "#1A0F2E", // Dark purple / near-black for strong contrast
+  onboardingBody: "#5A4D6B", // Dark gray / muted deep purple for body text
 
   // Background colors
   background: "#FBFAFF", // Warm White (main background)

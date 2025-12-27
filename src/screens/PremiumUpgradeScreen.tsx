@@ -101,11 +101,31 @@ const PlanCard: React.FC<PlanCardProps> = ({ title, isPremium, features }) => {
           ]}
         >
           <LinearGradient
-            colors={[COLORS.softLavender, COLORS.cardBackground]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+            colors={[
+              "#F1C89F", // peach
+              "#FFEBDD", // warm cream
+              "#F2E9FF", // light lavender
+              "#E2D6F3", // soft purple
+              "#D4C7EA", // lavender
+              "#D1EFF2", // mint
+            ]}
+            locations={[0, 0.2, 0.42, 0.62, 0.82, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
             style={styles.planCardGradient}
           >
+            {/* Vertical white fade overlay */}
+            <LinearGradient
+              colors={[
+                "rgba(255,255,255,0)",
+                "rgba(255,255,255,0.25)",
+                "rgba(255,255,255,0.45)",
+              ]}
+              locations={[0, 0.6, 1]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
             {cardContent}
           </LinearGradient>
         </Animated.View>
@@ -468,8 +488,9 @@ const styles = StyleSheet.create({
   },
   planCardGradient: {
     flex: 1,
-    padding: SIZES.lg,
+    padding: 20,
     borderRadius: SIZES.radiusXl,
+    overflow: "hidden",
   },
   recommendedBadge: {
     position: "absolute",

@@ -71,6 +71,46 @@ const SettingsItem: React.FC<SettingsItemProps> = ({
   </TouchableOpacity>
 );
 
+interface PremiumUpgradeCardProps {
+  onPress: () => void;
+}
+
+const PremiumUpgradeCard: React.FC<PremiumUpgradeCardProps> = ({ onPress }) => (
+  <TouchableOpacity
+    style={styles.premiumCard}
+    onPress={onPress}
+    activeOpacity={0.8}
+  >
+    <LinearGradient
+      colors={[
+        "#F1C89F",
+        "#FFEFE3",
+        "#F2F2FF",
+        "#DFD3F2",
+        "#D1C3EA",
+        "#F2F2FF",
+      ]}
+      locations={[0, 0.18, 0.38, 0.6, 0.8, 1]}
+      start={{ x: 0, y: 0.5 }}
+      end={{ x: 1, y: 0.5 }}
+      style={styles.premiumCardGradient}
+    >
+      <View style={styles.premiumCardContent}>
+        <View style={styles.premiumIconContainer}>
+          <Ionicons name="diamond" size={20} color="#FFFFFF" />
+        </View>
+        <View style={styles.premiumTextContainer}>
+          <Text style={styles.premiumTitle}>Upgrade To Premium</Text>
+          <Text style={styles.premiumSubtitle}>
+            Enjoy smarter tracking, insights, and ads free experience.
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={COLORS.darkText} />
+      </View>
+    </LinearGradient>
+  </TouchableOpacity>
+);
+
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const localUser = useUserStore((state) => state.user);
@@ -100,10 +140,10 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const usagePercent =
     (localUser.procedureCount / localUser.maxProcedures) * 100;
 
-  const handleFaceIdToggle = (value: boolean) => {
-    setFaceIdEnabled(value);
-    updateUser({ faceIdEnabled: value });
-  };
+  // const handleFaceIdToggle = (value: boolean) => {
+  //   setFaceIdEnabled(value);
+  //   updateUser({ faceIdEnabled: value });
+  // };
 
   const handleDarkModeToggle = (value: boolean) => {
     setDarkModeEnabled(value);
@@ -169,75 +209,71 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         >
           {/* Profile Card */}
           <View style={styles.profileCard}>
-            <LinearGradient
-              colors={GRADIENTS.card}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={styles.profileGradient}
-            >
-              <View style={styles.avatarContainer}>
-                <View style={styles.avatar}>
-                  {avatarUrl ? (
-                    <Image
-                      source={{ uri: avatarUrl }}
-                      style={styles.avatarImage}
-                    />
-                  ) : (
-                    <Ionicons
-                      name="person-outline"
-                      size={32}
-                      color={COLORS.primary}
-                    />
-                  )}
-                </View>
-                <View style={styles.profileInfo}>
-                  <Text style={styles.profileName}>{displayName}</Text>
-                  {displayEmail && (
-                    <Text style={styles.profileEmail}>{displayEmail}</Text>
-                  )}
-                  {!isGuestUser && (
-                    <View style={styles.planBadge}>
-                      <Text style={styles.planText}>
-                        {localUser.isPremium ? "Premium" : "Free Plan"}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-
-              {/* Auth Status Badge */}
-              {isAuthenticated && (
-                <View style={styles.authBadge}>
-                  <Ionicons name="checkmark-circle" size={14} color="#4CAF50" />
-                  <Text style={styles.authBadgeText}>
-                    Signed in with Google
-                  </Text>
-                </View>
-              )}
-
-              {/* Usage Bar */}
-              <View style={styles.usageSection}>
-                <View style={styles.usageHeader}>
-                  <Text style={styles.usageLabel}>Procedures used</Text>
-                  <Text style={styles.usageCount}>
-                    {localUser.procedureCount} / {localUser.maxProcedures}
-                  </Text>
-                </View>
-                <View style={styles.usageBarBg}>
-                  <View
-                    style={[
-                      styles.usageBarFill,
-                      { width: `${Math.min(usagePercent, 100)}%` },
-                    ]}
+            <View style={styles.avatarContainer}>
+              <View style={styles.avatar}>
+                {avatarUrl ? (
+                  <Image
+                    source={{ uri: avatarUrl }}
+                    style={styles.avatarImage}
                   />
-                </View>
+                ) : (
+                  <Ionicons
+                    name="person-outline"
+                    size={32}
+                    color={COLORS.primary}
+                  />
+                )}
               </View>
-            </LinearGradient>
+              <View style={styles.profileInfo}>
+                <Text style={styles.profileName}>{displayName}</Text>
+                {displayEmail && (
+                  <Text style={styles.profileEmail}>{displayEmail}</Text>
+                )}
+                {!isGuestUser && (
+                  <View style={styles.planBadge}>
+                    <Text style={styles.planText}>
+                      {localUser.isPremium ? "Premium" : "Free Plan"}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+
+            {/* Auth Status Badge */}
+            {isAuthenticated && (
+              <View style={styles.authBadge}>
+                <Ionicons name="checkmark-circle" size={14} color="#4CAF50" />
+                <Text style={styles.authBadgeText}>Signed in with Google</Text>
+              </View>
+            )}
+
+            {/* Usage Bar */}
+            <View style={styles.usageSection}>
+              <View style={styles.usageHeader}>
+                <Text style={styles.usageLabel}>Procedures used</Text>
+                <Text style={styles.usageCount}>
+                  {localUser.procedureCount} / {localUser.maxProcedures}
+                </Text>
+              </View>
+              <View style={styles.usageBarBg}>
+                <View
+                  style={[
+                    styles.usageBarFill,
+                    { width: `${Math.min(usagePercent, 100)}%` },
+                  ]}
+                />
+              </View>
+            </View>
           </View>
+
+          {/* Premium Upgrade Card */}
+          <PremiumUpgradeCard
+            onPress={() => navigation.navigate("PremiumUpgrade")}
+          />
 
           {/* Security Section */}
           <View style={styles.section}>
-            <SettingsItem
+            {/* <SettingsItem
               icon="finger-print"
               iconColor="#E57B9D"
               title="Face ID Lock"
@@ -251,7 +287,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                 />
               }
               showArrow={false}
-            />
+            /> */}
             {/* Dark Mode */}
             {/* TODO: Implement Dark Mode - currently disabled -- maybe create feature flag for this?*/}
             {false && (
@@ -282,13 +318,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
           {/* Premium & Features */}
           <View style={styles.section}>
-            <SettingsItem
-              icon="diamond-outline"
-              iconColor="#F2A679"
-              title="Upgrade to Premium"
-              subtitle="Unlimited procedures & photos"
-              onPress={() => navigation.navigate("PremiumUpgrade")}
-            />
             <SettingsItem
               icon="cloud-outline"
               iconColor="#81B4D8"
@@ -376,6 +405,10 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radiusXl,
     overflow: "hidden",
     marginBottom: SIZES.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.cardBackground,
+    padding: SIZES.lg,
     ...SHADOWS.medium,
   },
   profileGradient: {
@@ -472,6 +505,42 @@ const styles = StyleSheet.create({
     height: "100%",
     backgroundColor: COLORS.primary,
     borderRadius: 3,
+  },
+  premiumCard: {
+    borderRadius: SIZES.radiusXl,
+    marginBottom: SIZES.lg,
+    overflow: "hidden",
+    ...SHADOWS.medium,
+  },
+  premiumCardGradient: {
+    padding: SIZES.md,
+  },
+  premiumCardContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  premiumIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FFA366",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: SIZES.md,
+  },
+  premiumTextContainer: {
+    flex: 1,
+  },
+  premiumTitle: {
+    fontSize: SIZES.fontLg,
+    fontWeight: "700",
+    color: COLORS.darkText,
+    marginBottom: 4,
+  },
+  premiumSubtitle: {
+    fontSize: SIZES.fontSm,
+    color: COLORS.warmCocoa,
+    lineHeight: 18,
   },
   section: {
     backgroundColor: COLORS.cardBackground,
